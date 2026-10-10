@@ -1,5 +1,6 @@
-import Link from "next/link"
 "use client"
+
+import Link from "next/link"
 
 import { useTransition, type MouseEvent } from "react"
 import { FolderOpen, Trash2 } from "lucide-react"
