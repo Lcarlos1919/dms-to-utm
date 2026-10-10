@@ -6,6 +6,7 @@ import { getUsageStatus } from "@/lib/usage"
 import { processMemorial } from "@/lib/engine"
 import { recalcularGeometria, type Vertice } from "@/lib/topocad"
 import { verticeParaLinha } from "@/lib/topocad-db/mapeamento"
+import { excluirProjetoCompleto } from "@/lib/projects/delete-project"
 import { z } from "zod"
 
 const MAX_SIZE = 10 * 1024 * 1024
@@ -53,6 +54,15 @@ export async function attachSourcePdf(projectId: string, storagePath: string) {
   if (!storagePath.startsWith(`${userId}/`)) return { ok: false as const, error: "Caminho de arquivo inválido." }
   const { error } = await createAdminClient().from("projects").update({ source_pdf_path: storagePath }).eq("id", projectId).eq("user_id", userId)
   return error ? { ok: false as const, error: "Não foi possível anexar o PDF." } : { ok: true as const }
+}
+
+export async function excluirProjeto(projectId: string) {
+  const userId = await requireUser()
+  try {
+    return await excluirProjetoCompleto(projectId, userId)
+  } catch {
+    return { ok: false as const, error: "Não foi possível excluir o projeto." }
+  }
 }
 
 export async function retryProject(projectId: string) {

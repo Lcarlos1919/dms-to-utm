@@ -6,6 +6,7 @@ import { getUsageStatus, incrementUsage } from "@/lib/usage"
 import { ErroApp, extrairItensDoPdf } from "@/lib/pdf/extrair-itens"
 import { processarPaginas, type ResultadoMotor } from "@/lib/topocad"
 import { projetoDoResultado, verticeParaLinha } from "@/lib/topocad-db/mapeamento"
+import { excluirProjetoSemFalhar } from "@/lib/projects/delete-project"
 
 export type ProcessResult =
   | { ok: true; result: Extract<ResultadoMotor, { ok: true }> }
@@ -155,12 +156,7 @@ export async function processMemorial(projectId: string, userId: string): Promis
       : "Não foi possível processar o memorial. Confira o PDF e tente novamente."
     const status = error instanceof MemorialProcessingError ? error.status : error instanceof ErroApp ? 422 : 500
 
-    await db
-      .from("projects")
-      .update({ status: "error", error_code: code, error_message: message })
-      .eq("id", projectId)
-      .eq("user_id", userId)
-
+    await excluirProjetoSemFalhar(projectId, userId)
     return { ok: false, error: code, message, status }
   }
 }
