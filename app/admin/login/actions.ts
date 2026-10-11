@@ -3,6 +3,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import { createAdminClient } from "@/lib/supabase/server"
+import { writeAuditLog } from "@/lib/admin"
 import { createAdminSession, isAdminSessionConfigured, setAdminSession, verifyPanelPassword } from "@/lib/admin-session"
 
 export async function loginAdmin(formData: FormData) {
@@ -19,7 +20,11 @@ export async function loginAdmin(formData: FormData) {
   const allowed = (count ?? 0) < 5
   const success = allowed && verifyPanelPassword(password)
   await db.from("admin_login_attempts").insert({ user_id: userId, success })
-  if (!success) redirect("/admin/login?error=credenciais")
+  if (!success) {
+    await writeAuditLog(userId, "admin.login_failed", userId, { reason: allowed ? "invalid_password" : "rate_limited" })
+    redirect("/admin/login?error=credenciais")
+  }
   await setAdminSession(userId)
+  await writeAuditLog(userId, "admin.login_succeeded", userId)
   redirect("/admin")
 }
