@@ -12,6 +12,10 @@ function secret() {
   return process.env.ADMIN_SESSION_SECRET ?? ""
 }
 
+function panelPasswordHash() {
+  return process.env.ADMIN_PANEL_PASSWORD_HASH ?? process.env.ADMIN_PANEL_PASSWORD_HASH_2 ?? ""
+}
+
 function sign(value: string) {
   return createHmac("sha256", secret()).update(value).digest("base64url")
 }
@@ -58,11 +62,11 @@ export async function clearAdminSession() {
 export { COOKIE_NAME }
 
 export function isAdminSessionConfigured() {
-  return Boolean(process.env.ADMIN_SESSION_SECRET && process.env.ADMIN_PANEL_PASSWORD_HASH)
+  return Boolean(secret() && panelPasswordHash())
 }
 
 export function verifyPanelPassword(password: string) {
-  const stored = process.env.ADMIN_PANEL_PASSWORD_HASH ?? ""
+  const stored = panelPasswordHash()
   const [algorithm, salt, encodedHash] = stored.split("$")
   if (algorithm !== "scrypt" || !salt || !encodedHash) return false
   try {
