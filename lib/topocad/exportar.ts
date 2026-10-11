@@ -3,7 +3,7 @@
  * Salve como lib/topocad/exportar.ts. Exporte sempre a partir dos vértices do banco.
  */
 
-import type { Crs, Vertice } from "./tipos";
+import type { Crs, Vertice } from "./motor";
 
 // ───────────────────────── DXF R12 (ASCII, escrito à mão) ─────────────────────────
 

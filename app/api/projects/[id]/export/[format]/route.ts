@@ -1,23 +1,8 @@
 import { NextResponse } from "next/server"
 import { requireUser } from "@/lib/auth"
 import { createAdminClient } from "@/lib/supabase/server"
-
-function dxfFromVertices(vertices: Array<{ easting: number | null; northing: number | null; code: string }>) {
-  const points = vertices.filter((vertex): vertex is { easting: number; northing: number; code: string } =>
-    Number.isFinite(vertex.easting) && Number.isFinite(vertex.northing),
-  )
-  const lines = ["0", "SECTION", "2", "HEADER", "0", "ENDSEC", "0", "SECTION", "2", "ENTITIES"]
-  if (points.length > 1) {
-    lines.push("0", "LWPOLYLINE", "8", "TOPOCAD", "90", String(points.length), "70", "1")
-    for (const point of points) lines.push("10", String(point.easting), "20", String(point.northing))
-  }
-  for (const point of points) {
-    lines.push("0", "POINT", "8", "VERTICES", "10", String(point.easting), "20", String(point.northing), "30", "0")
-    lines.push("0", "TEXT", "8", "LABELS", "10", String(point.easting), "20", String(point.northing), "40", "1.5", "1", point.code)
-  }
-  lines.push("0", "ENDSEC", "0", "EOF")
-  return lines.join("\r\n") + "\r\n"
-}
+import { gerarDxf } from "@/lib/topocad"
+import type { Vertice } from "@/lib/topocad/tipos"
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string; format: string }> }) {
   const userId = await requireUser()
@@ -37,6 +22,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { data: vertices, error } = await db.from("project_vertices").select("easting, northing, code").eq("project_id", id).order("seq")
   if (error) return NextResponse.json({ error: "Não foi possível carregar os vértices." }, { status: 500 })
   if (!vertices?.length) return NextResponse.json({ error: "Processe o memorial antes de exportar o DXF." }, { status: 409 })
-  const body = dxfFromVertices(vertices)
+  const body = gerarDxf(vertices.map((vertex) => ({
+    codigo: vertex.code,
+    este: vertex.easting,
+    norte: vertex.northing,
+  })) as Pick<Vertice, "codigo" | "este" | "norte">[])
   return new NextResponse(body, { headers: { "Content-Type": "application/dxf", "Content-Disposition": `attachment; filename="${project.name.replace(/[^a-z0-9-_]+/gi, "-")}.dxf"` } })
 }

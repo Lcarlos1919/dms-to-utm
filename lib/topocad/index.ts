@@ -6,5 +6,5 @@ export * from "./utm";
 export * from "./geodesia";
 export * from "./geometria";
 export * from "./motor";
-export * from "./dxf";
+export { gerarDxf } from "./exportar";
 export * from "./xlsx";
