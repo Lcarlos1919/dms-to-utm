@@ -1,14 +1,20 @@
 import "server-only"
 
 import { auth, currentUser } from "@clerk/nextjs/server"
-import { redirect } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
+import { getAdminSession } from "@/lib/admin-session"
+import { createAdminClient } from "@/lib/supabase/server"
 
-const adminEmails = new Set(
-  (process.env.ADMIN_EMAILS ?? "miriamsaccoman10@gmail.com")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean),
-)
+async function getVerifiedEmail() {
+  const user = await currentUser()
+  return user?.emailAddresses.find((item) => item.id === user.primaryEmailAddressId)?.emailAddress?.toLowerCase() ?? null
+}
+
+async function isRegisteredAdmin(email: string | null) {
+  if (!email) return false
+  const { data, error } = await createAdminClient().from("admin_users").select("email").eq("email", email).eq("active", true).maybeSingle()
+  return !error && Boolean(data)
+}
 
 export async function requireUser() {
   const { userId } = await auth()
@@ -17,18 +23,19 @@ export async function requireUser() {
 }
 
 export async function hasAdminEmail() {
-  const user = await currentUser()
-  const email = user?.emailAddresses.find((item) => item.id === user.primaryEmailAddressId)?.emailAddress
-  return Boolean(email && adminEmails.has(email.toLowerCase()))
+  return isRegisteredAdmin(await getVerifiedEmail())
 }
 
 export async function isAdmin() {
-  return hasAdminEmail()
+  const { userId } = await auth()
+  return Boolean(userId && (await hasAdminEmail()))
 }
 
 export async function requireAdmin() {
   const userId = await requireUser()
-  if (!(await hasAdminEmail())) redirect("/dashboard")
+  if (!(await hasAdminEmail())) notFound()
+  const session = await getAdminSession()
+  if (!session || session.userId !== userId) redirect("/admin/login")
   return userId
 }
 
@@ -36,7 +43,9 @@ type AdminApiResult = { ok: true; userId: string } | { ok: false; response: Resp
 
 export async function requireAdminApi(): Promise<AdminApiResult> {
   const { userId } = await auth()
-  if (!userId) return { ok: false, response: Response.json({ error: "Não autenticado." }, { status: 401 }) }
-  if (!(await hasAdminEmail())) return { ok: false, response: Response.json({ error: "Acesso negado." }, { status: 403 }) }
+  if (!userId) return { ok: false, response: new Response(null, { status: 404 }) }
+  if (!(await hasAdminEmail())) return { ok: false, response: new Response(null, { status: 404 }) }
+  const session = await getAdminSession()
+  if (!session || session.userId !== userId) return { ok: false, response: new Response(null, { status: 404 }) }
   return { ok: true, userId }
 }
