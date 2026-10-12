@@ -22,7 +22,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
               Painel admin
             </Link>
           ) : null}
-          <UserButton afterSignOutUrl="/sign-in" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-visible">
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: "!h-9 !w-9",
+                  userButtonTrigger: "!h-9 !w-9",
+                },
+              }}
+            />
+          </div>
         </div>
       }
     >
