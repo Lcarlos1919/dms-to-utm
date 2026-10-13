@@ -1,7 +1,7 @@
 import "server-only"
 
 import { auth, currentUser } from "@clerk/nextjs/server"
-import { notFound, redirect } from "next/navigation"
+import { redirect } from "next/navigation"
 import { getAdminSession } from "@/lib/admin-session"
 import { createAdminClient } from "@/lib/supabase/server"
 
@@ -54,7 +54,8 @@ export async function requireUser() {
 }
 
 export async function hasAdminEmail() {
-  return (await getAdminAccessState(null)).allowed
+  const state = await getAdminAccessState("admin-card-check")
+  return Boolean(state.email && state.primaryEmailVerified && state.adminFound && state.adminActive)
 }
 
 export async function isAdmin() {
@@ -63,8 +64,14 @@ export async function isAdmin() {
 }
 
 export async function requireAdmin() {
-  const userId = await requireUser()
-  if (!(await getAdminAccessState(userId)).allowed) notFound()
+  const { userId } = await auth()
+  if (!userId) redirect("/sign-in")
+
+  const access = await getAdminAccessState(userId)
+  if (!access.email || !access.primaryEmailVerified || !access.adminFound || !access.adminActive) {
+    redirect("/admin/login?error=unauthorized")
+  }
+
   const session = await getAdminSession()
   if (!session || session.userId !== userId) redirect("/admin/login")
   return userId
