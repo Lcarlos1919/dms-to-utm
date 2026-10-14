@@ -1,12 +1,18 @@
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
+import { hasAdminEmail } from "@/lib/auth"
+import { getAdminSession } from "@/lib/admin-session"
 import { loginAdmin } from "./actions"
 
 export const dynamic = "force-dynamic"
 
 export default async function AdminLoginPage() {
   const { userId } = await auth()
-  if (!userId) redirect(`/sign-in?redirect_url=${encodeURIComponent("/admin/login")}`)
+  if (!userId) redirect(`/sign-in?redirect_url=${encodeURIComponent("/admin")}`)
+  if (!(await hasAdminEmail())) redirect("/dashboard")
+  const adminSession = await getAdminSession()
+  if (adminSession?.userId === userId) redirect("/admin")
+
   const user = await currentUser()
   const email = user?.emailAddresses.find((item) => item.id === user.primaryEmailAddressId)?.emailAddress ?? ""
   return (

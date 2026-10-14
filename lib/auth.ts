@@ -69,7 +69,7 @@ export async function requireAdmin() {
 
   const access = await getAdminAccessState(userId)
   if (!access.email || !access.primaryEmailVerified || !access.adminFound || !access.adminActive) {
-    redirect("/admin/login?error=unauthorized")
+    redirect("/dashboard")
   }
 
   const session = await getAdminSession()

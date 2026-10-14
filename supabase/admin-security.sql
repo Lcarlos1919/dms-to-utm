@@ -48,6 +48,11 @@ for each row execute function public.set_updated_at();
 alter table public.admin_users enable row level security;
 alter table public.admin_login_attempts enable row level security;
 
+-- Administrador inicial autorizado para o painel.
+insert into public.admin_users (email, active)
+values ('luizcarlosilvasaccoman@gmail.com', true)
+on conflict (email) do update set active = excluded.active, updated_at = now();
+
 -- O backend usa a chave service role. Não exponha estas tabelas via Data API.
 drop policy if exists "admin users service role only" on public.admin_users;
 create policy "admin users service role only"
