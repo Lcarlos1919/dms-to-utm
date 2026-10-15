@@ -17,7 +17,7 @@ Dar continuidade ao TopoCAD com o menor risco possível, mantendo o fluxo princi
 **Entregáveis:** build verde, tipos coerentes, SQL aplicado, ambientes documentados.
 
 - Corrigir os tipos compartilhados do motor TopoCAD.
-- Validar `supabase/schema.sql` e `supabase/admin-security.sql` em ambiente não produtivo.
+- Validar `supabase/001_schema.sql` e `supabase/admin-security.sql` em ambiente não produtivo.
 - Confirmar `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SIGNING_SECRET`, `SUPABASE_URL`, chave service role e segredos admin.
 - Confirmar que nenhum segredo aparece em logs, commits ou respostas HTTP.
 - Criar checklist de rollback para SQL e deploy.

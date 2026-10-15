@@ -31,8 +31,9 @@ export async function requireStaff(): Promise<StaffContext> {
   if (!userId) redirect("/admin/login")
   if (!orgId || orgId !== process.env.CLERK_STAFF_ORG_ID) redirect("/dashboard")
 
-  const permissions = Object.values(ADMIN_PERMISSIONS).filter((permission) => has({ permission }))
-  return { userId, orgId, orgRole: orgRole ?? "org:member", permissions }
+  const resolvedRole = orgRole ?? "org:member"
+  const permissions = resolveRolePermissions(resolvedRole, has)
+  return { userId, orgId, orgRole: resolvedRole, permissions }
 }
 
 export async function requirePermission(permission: string): Promise<StaffContext> {
@@ -46,8 +47,22 @@ export async function requirePermission(permission: string): Promise<StaffContex
 export async function getStaffContext(): Promise<StaffContext | null> {
   const { userId, orgId, orgRole, has } = await auth()
   if (!userId || !orgId || orgId !== process.env.CLERK_STAFF_ORG_ID) return null
-  const permissions = Object.values(ADMIN_PERMISSIONS).filter((permission) => has({ permission }))
-  return { userId, orgId, orgRole: orgRole ?? "org:member", permissions }
+  const resolvedRole = orgRole ?? "org:member"
+  const permissions = resolveRolePermissions(resolvedRole, has)
+  return { userId, orgId, orgRole: resolvedRole, permissions }
+}
+
+const ROLE_PERMISSIONS: Record<string, string[]> = {
+  "org:admin": Object.values(ADMIN_PERMISSIONS),
+  "org:support": [ADMIN_PERMISSIONS.usersRead, ADMIN_PERMISSIONS.usersManage],
+  "org:finance": [ADMIN_PERMISSIONS.billingRead],
+  "org:viewer": [ADMIN_PERMISSIONS.usersRead],
+  "org:member": [],
+}
+
+function resolveRolePermissions(role: string, has: (input: { permission: string }) => boolean) {
+  const configured = Object.values(ADMIN_PERMISSIONS).filter((permission) => has({ permission }))
+  return Array.from(new Set([...configured, ...(ROLE_PERMISSIONS[role] ?? [])]))
 }
 
 export function isStaffAdmin(context: StaffContext) {

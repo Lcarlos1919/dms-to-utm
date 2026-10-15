@@ -14,7 +14,7 @@ O TopoCAD transforma memoriais descritivos em dados geoespaciais utilizáveis: l
 - Painel administrativo em `app/admin`.
 - Motor geoespacial e parser em `lib/engine` e `lib/topocad`.
 - Exportações PDF/DXF/XLSX/ZIP em `app/api` e `lib/topocad`.
-- RLS e schema principal em `supabase/schema.sql`; segurança administrativa em `supabase/admin-security.sql`.
+- RLS e schema principal em `supabase/001_schema.sql`; segurança administrativa em `supabase/admin-security.sql`.
 
 ## 3. Prioridades
 
