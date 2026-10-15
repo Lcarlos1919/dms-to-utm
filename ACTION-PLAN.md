@@ -14,6 +14,8 @@ Dar continuidade ao TopoCAD com o menor risco possível, mantendo o fluxo princi
 
 ## Fase 1 — fundação técnica
 
+**Status:** concluída a primeira rodada de hardening de autenticação administrativa e verificação SQL; manter a validação de ambiente e o build como pendências operacionais.
+
 **Entregáveis:** build verde, tipos coerentes, SQL aplicado, ambientes documentados.
 
 - Corrigir os tipos compartilhados do motor TopoCAD.

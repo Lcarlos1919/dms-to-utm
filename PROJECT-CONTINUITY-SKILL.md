@@ -57,6 +57,12 @@ Depois execute `git status --short --branch` e identifique o ambiente/framework 
 - Auditoria deve registrar ação, ator, alvo e metadados mínimos; não registrar PII desnecessária.
 - Erros públicos devem ser genéricos; detalhes ficam no log seguro.
 
+## Estado de referência atual
+
+- A autorização administrativa usa Clerk como identidade e sessão administrativa separada.
+- As rotinas administrativas e de auditoria foram endurecidas; preservar a validação de organização, usuário ativo e escopo por `user_id`.
+- Antes de declarar a entrega pronta, confirmar as migrações `supabase/003_staff-rbac.sql` e `supabase/004_drop_legacy_admin.sql` no ambiente correto e executar `supabase/verify.sql`.
+
 ## Processo de implementação
 
 1. Reproduza ou localize o comportamento atual.

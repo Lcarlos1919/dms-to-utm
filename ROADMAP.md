@@ -6,6 +6,8 @@ O TopoCAD transforma memoriais descritivos em dados geoespaciais utilizáveis: l
 
 ## 2. Estado atual
 
+- Hardening administrativo aplicado em `lib/auth.ts`, `lib/admin-auth.ts`, `lib/audit.ts` e `proxy.ts`.
+- Scripts SQL de verificação e remoção de compatibilidade legada adicionados em `supabase/verify.sql` e `supabase/004_drop_legacy_admin.sql`.
 - Next.js 16 App Router, React 19 e TypeScript.
 - Clerk para autenticação, usuários e organizações.
 - Supabase para banco, Storage e operações server-side.
