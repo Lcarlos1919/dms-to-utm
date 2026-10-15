@@ -55,7 +55,7 @@ export async function getStaffContext(): Promise<StaffContext | null> {
 const ROLE_PERMISSIONS: Record<string, string[]> = {
   "org:admin": Object.values(ADMIN_PERMISSIONS),
   "org:support": [ADMIN_PERMISSIONS.usersRead, ADMIN_PERMISSIONS.usersManage],
-  "org:finance": [ADMIN_PERMISSIONS.billingRead],
+  "org:finance": [ADMIN_PERMISSIONS.usersRead, ADMIN_PERMISSIONS.billingRead, ADMIN_PERMISSIONS.plansManage],
   "org:viewer": [ADMIN_PERMISSIONS.usersRead],
   "org:member": [],
 }

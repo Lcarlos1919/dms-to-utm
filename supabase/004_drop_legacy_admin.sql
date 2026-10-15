@@ -1,0 +1,6 @@
+-- uncomment and run manually after verifying nothing reads these tables
+-- These objects are intentionally retained until the owner confirms the migration.
+-- drop table if exists public.admin_users cascade;
+-- drop table if exists public.admin_login_attempts cascade;
+-- If the application no longer references audit_logs, remove it manually too:
+-- drop table if exists public.audit_logs cascade;

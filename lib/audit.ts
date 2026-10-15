@@ -15,7 +15,7 @@ export async function writeAdminAuditLog(input: {
     action: input.action,
     metadata: input.metadata ?? {},
   })
-  if (error) console.error("admin_audit_log insert failed:", error.message)
+  if (error) throw new Error(`Falha ao registrar auditoria administrativa: ${error.message}`)
 }
 
 export async function writeAuditLog(input: {
