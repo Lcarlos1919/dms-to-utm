@@ -16,6 +16,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           {admin ? (
             <Link
               href="/admin"
+              prefetch={false}
               aria-label="Abrir painel admin"
               className="rounded-lg border border-zinc-800 px-3 py-2 text-sm text-zinc-400 transition-colors hover:border-zinc-700 hover:bg-zinc-900 hover:text-zinc-100"
             >

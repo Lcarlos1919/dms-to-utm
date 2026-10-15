@@ -28,6 +28,7 @@ export function Navbar() {
           </div>
           <Link
             href="/sign-in"
+            prefetch={false}
             className="px-4 py-1.5 text-sm rounded-full transition-colors text-zinc-400 hover:text-zinc-100"
           >
             Entrar

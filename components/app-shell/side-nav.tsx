@@ -17,7 +17,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean }
+type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean; permission?: string; adminOnly?: boolean }
 
 const navItems: Record<"dashboard" | "admin", NavItem[]> = {
   dashboard: [
@@ -27,21 +27,24 @@ const navItems: Record<"dashboard" | "admin", NavItem[]> = {
   ],
   admin: [
     { href: "/admin", label: "Visão geral", icon: LayoutDashboard, exact: true },
-    { href: "/admin/usuarios", label: "Usuários", icon: Users },
-    { href: "/admin/projetos", label: "Projetos", icon: FolderKanban },
-    { href: "/admin/assinaturas", label: "Assinaturas", icon: Receipt },
-    { href: "/admin/uso", label: "Uso", icon: BarChart3 },
-    { href: "/admin/logs", label: "Logs", icon: ScrollText },
-    { href: "/admin/configuracoes", label: "Configurações", icon: Settings },
+    { href: "/admin/usuarios", label: "Usuários", icon: Users, permission: "org:users:read" },
+    { href: "/admin/staff", label: "Equipe", icon: Users, permission: "org:staff:manage", adminOnly: true },
+    { href: "/admin/planos", label: "Planos", icon: CreditCard, permission: "org:plans:manage" },
+    { href: "/admin/projetos", label: "Projetos", icon: FolderKanban, permission: "org:users:read" },
+    { href: "/admin/assinaturas", label: "Assinaturas", icon: Receipt, permission: "org:billing:read" },
+    { href: "/admin/uso", label: "Uso", icon: BarChart3, permission: "org:billing:read" },
+    { href: "/admin/logs", label: "Logs", icon: ScrollText, permission: "org:users:read" },
+    { href: "/admin/configuracoes", label: "Configurações", icon: Settings, permission: "org:staff:manage" },
   ],
 }
 
-export function SideNav({ variant }: { variant: "dashboard" | "admin" }) {
+export function SideNav({ variant, adminPermissions = [], adminRole }: { variant: "dashboard" | "admin"; adminPermissions?: string[]; adminRole?: string }) {
   const pathname = usePathname()
+  const visibleItems = navItems[variant].filter((item) => variant !== "admin" || (!item.adminOnly || adminRole === "org:admin") && (!item.permission || adminRole === "org:admin" || adminPermissions.includes(item.permission)))
 
   return (
     <ul className="flex md:flex-col gap-1 overflow-x-auto">
-      {navItems[variant].map((item) => {
+      {visibleItems.map((item) => {
         const Icon = item.icon
         const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
         return (

@@ -59,21 +59,14 @@ export async function hasAdminEmail() {
 }
 
 export async function isAdmin() {
-  const { userId } = await auth()
-  return (await getAdminAccessState(userId)).allowed
+  const { userId, orgId } = await auth()
+  return Boolean(userId && orgId && orgId === process.env.CLERK_STAFF_ORG_ID)
 }
 
 export async function requireAdmin() {
-  const { userId } = await auth()
-  if (!userId) redirect("/sign-in")
-
-  const access = await getAdminAccessState(userId)
-  if (!access.email || !access.primaryEmailVerified || !access.adminFound || !access.adminActive) {
-    redirect("/dashboard")
-  }
-
-  const session = await getAdminSession()
-  if (!session || session.userId !== userId) redirect("/admin/login")
+  const { userId, orgId } = await auth()
+  if (!userId) redirect("/admin/login")
+  if (!orgId || orgId !== process.env.CLERK_STAFF_ORG_ID) redirect("/dashboard")
   return userId
 }
 
