@@ -26,7 +26,7 @@ Depois execute `git status --short --branch` e identifique o ambiente/framework 
 - `lib/auth.ts`: identidade Clerk e autorização admin.
 - `lib/admin-session.ts`: sessão administrativa separada.
 - `lib/usage.ts`: limites de uso.
-- `supabase/schema.sql`: tabelas, RLS, Storage e triggers principais.
+- `supabase/001_schema.sql`: tabelas, RLS, Storage e triggers principais.
 - `supabase/admin-security.sql`: tabelas/políticas de administração e auditoria.
 - `proxy.ts`: middleware Clerk.
 
