@@ -12,7 +12,6 @@ export const clerkPublishableKey = required(
   "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
 )
-export const clerkSecretKey = required(
-  "CLERK_SECRET_KEY",
-  process.env.CLERK_SECRET_KEY,
-)
+export function getClerkSecretKey() {
+  return required("CLERK_SECRET_KEY", process.env.CLERK_SECRET_KEY)
+}
