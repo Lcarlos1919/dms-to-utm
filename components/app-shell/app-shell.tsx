@@ -6,11 +6,15 @@ export function AppShell({
   variant,
   topbarExtra,
   sidebarFooter,
+  adminPermissions,
+  adminRole,
   children,
 }: {
   variant: "dashboard" | "admin"
   topbarExtra?: React.ReactNode
   sidebarFooter?: React.ReactNode
+  adminPermissions?: string[]
+  adminRole?: string
   children: React.ReactNode
 }) {
   return (
@@ -27,7 +31,7 @@ export function AppShell({
           )}
         </div>
         <nav aria-label="Navegação principal" className="p-3 flex-1">
-          <SideNav variant={variant} />
+          <SideNav variant={variant} adminPermissions={adminPermissions} adminRole={adminRole} />
         </nav>
         {sidebarFooter && <div className="hidden md:block p-3 border-t border-zinc-900">{sidebarFooter}</div>}
       </aside>
