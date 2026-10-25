@@ -1,6 +1,5 @@
 import "server-only"
 
-import { staleProcessingCutoff } from "@/lib/project-status"
 import { createAdminClient } from "@/lib/supabase/server"
 
 export const DEFAULT_FREE_LIMIT = 3
@@ -32,13 +31,12 @@ export async function getUsageStatus(userId: string): Promise<UsageStatus> {
 
   const [{ data: profile }, { count }, freeLimit] = await Promise.all([
     supabase.from("profiles").select("plan, bonus_credits").eq("user_id", userId).maybeSingle(),
-    // Only projects being processed or ready consume quota; drafts, errors and stale processing do not.
     supabase
       .from("projects")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .gte("created_at", monthStart)
-      .or(`status.eq.ready,and(status.eq.processing,updated_at.gte.${staleProcessingCutoff()})`),
+      .in("status", ["processing", "ready"]),
     getFreeMonthlyLimit(),
   ])
 

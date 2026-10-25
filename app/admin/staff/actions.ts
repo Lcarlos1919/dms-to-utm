@@ -6,7 +6,7 @@ import { z } from "zod"
 import { ADMIN_PERMISSIONS, requirePermission } from "@/lib/admin-auth"
 import { writeAdminAuditLog } from "@/lib/audit"
 
-const roleSchema = z.enum(["org:support", "org:finance", "org:viewer", "org:member", "org:admin"])
+const roleSchema = z.enum(["org:admin", "org:support", "org:finance", "org:viewer"])
 const idSchema = z.string().min(1)
 const emailSchema = z.string().email()
 
@@ -21,7 +21,7 @@ export async function inviteStaffMember(formData: FormData) {
     role,
     inviterUserId: context.userId,
   })
-  await writeAdminAuditLog({ actorId: context.userId, action: "staff.invitation.created", metadata: { email, role } })
+  await writeAdminAuditLog({ actorId: context.userId, action: "staff.invitation.created", metadata: { role } })
   revalidatePath("/admin/staff")
 }
 
@@ -60,7 +60,7 @@ export async function revokeStaffInvitation(formData: FormData) {
   const invitationId = idSchema.parse(formData.get("invitationId"))
   const client = await clerkClient()
   await client.organizations.revokeOrganizationInvitation({ organizationId: context.orgId, invitationId })
-  await writeAdminAuditLog({ actorId: context.userId, action: "staff.invitation.revoked", metadata: { invitationId } })
+  await writeAdminAuditLog({ actorId: context.userId, action: "staff.invitation.revoked" })
   revalidatePath("/admin/staff")
 }
 
