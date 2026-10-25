@@ -26,15 +26,15 @@ const navItems: Record<"dashboard" | "admin", NavItem[]> = {
     { href: "/dashboard/planos", label: "Planos", icon: CreditCard },
   ],
   admin: [
-    { href: "/admin", label: "Visão geral", icon: LayoutDashboard, exact: true },
+    { href: "/admin", label: "Visão geral", icon: LayoutDashboard, exact: true, adminOnly: true },
     { href: "/admin/usuarios", label: "Usuários", icon: Users, permission: "org:users:read" },
     { href: "/admin/staff", label: "Equipe", icon: Users, permission: "org:staff:manage", adminOnly: true },
     { href: "/admin/planos", label: "Planos", icon: CreditCard, permission: "org:plans:manage" },
-    { href: "/admin/projetos", label: "Projetos", icon: FolderKanban, permission: "org:users:read" },
+    { href: "/admin/projetos", label: "Projetos", icon: FolderKanban, permission: "org:projects:read" },
     { href: "/admin/assinaturas", label: "Assinaturas", icon: Receipt, permission: "org:billing:read" },
-    { href: "/admin/uso", label: "Uso", icon: BarChart3, permission: "org:billing:read" },
-    { href: "/admin/logs", label: "Logs", icon: ScrollText, permission: "org:users:read" },
-    { href: "/admin/configuracoes", label: "Configurações", icon: Settings, permission: "org:staff:manage" },
+    { href: "/admin/uso", label: "Uso", icon: BarChart3, permission: "org:usage:read" },
+    { href: "/admin/logs", label: "Logs", icon: ScrollText, permission: "org:audit:read" },
+    { href: "/admin/configuracoes", label: "Configurações", icon: Settings, permission: "org:staff:manage", adminOnly: true },
   ],
 }
 

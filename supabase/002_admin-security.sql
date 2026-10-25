@@ -1,6 +1,8 @@
--- TopoCAD: segurança e painel administrativo
--- Execute manualmente no Supabase SQL Editor.
--- Este script é idempotente e não cria usuários administrativos automaticamente.
+-- TopoCAD: segurança das tabelas (RLS) e colunas de permissão em profiles.
+-- Execute manualmente no Supabase SQL Editor. Idempotente.
+-- ATENÇÃO: admin_users / admin_login_attempts são LEGADO (login por senha).
+-- O acesso ao painel agora é pela Organização Staff do Clerk (CLERK_STAFF_ORG_ID).
+-- Este script NÃO cria administradores.
 
 create extension if not exists pgcrypto;
 
@@ -48,11 +50,6 @@ for each row execute function public.set_updated_at();
 alter table public.admin_users enable row level security;
 alter table public.admin_login_attempts enable row level security;
 
--- Administrador inicial autorizado para o painel.
-insert into public.admin_users (email, active)
-values ('luizcarlosilvasaccoman@gmail.com', true)
-on conflict (email) do update set active = excluded.active, updated_at = now();
-
 -- O backend usa a chave service role. Não exponha estas tabelas via Data API.
 drop policy if exists "admin users service role only" on public.admin_users;
 create policy "admin users service role only"
@@ -86,21 +83,8 @@ create policy "audit logs service role only"
 revoke all on table public.audit_logs from anon, authenticated;
 grant all on table public.audit_logs to service_role;
 
--- Para ativar o primeiro administrador, insira manualmente um e-mail verificado:
--- insert into public.admin_users (email) values ('admin@exemplo.com')
--- on conflict (email) do update set active = true;
-
--- Para o painel, configure também no ambiente do projeto:
--- ADMIN_PANEL_PASSWORD_HASH=scrypt$<salt>$<hash_hex>
--- ADMIN_SESSION_SECRET=<segredo longo e aleatório>
--- O código permanece inacessível até essas duas variáveis existirem.
-
--- Verificação segura após a execução:
--- select email, active from public.admin_users order by created_at desc;
--- select count(*) from public.admin_login_attempts;
--- select column_name from information_schema.columns
--- where table_schema = 'public' and table_name = 'profiles'
---   and column_name in ('can_create_memorials', 'can_delete_memorials');
+-- (legado) ADMIN_PANEL_PASSWORD_HASH e ADMIN_SESSION_SECRET não são mais necessários
+-- quando o painel usa o Clerk Staff RBAC.
 
 -- Limpeza opcional de tentativas antigas (retenção de 90 dias):
 -- delete from public.admin_login_attempts

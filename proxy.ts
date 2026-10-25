@@ -5,7 +5,6 @@ const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-in(.*)",
   "/sign-up(.*)",
-  "/admin/login(.*)",
   "/api/webhooks(.*)",
 ])
 const isDashboardRoute = createRouteMatcher(["/dashboard(.*)"])
@@ -20,9 +19,9 @@ export default clerkMiddleware(async (auth, request) => {
     return
   }
 
-  if (isAdminRoute(request) && !request.nextUrl.pathname.startsWith("/admin/login")) {
+  if (isAdminRoute(request)) {
     const { userId } = await auth()
-    if (!userId) return NextResponse.redirect(new URL("/admin/login", request.url))
+    if (!userId) return NextResponse.redirect(new URL("/sign-in", request.url))
   }
 })
 

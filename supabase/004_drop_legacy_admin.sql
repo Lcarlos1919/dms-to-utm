@@ -1,6 +1,7 @@
--- uncomment and run manually after verifying nothing reads these tables
--- These objects are intentionally retained until the owner confirms the migration.
+-- 004: remoção do admin legado. TUDO COMENTADO DE PROPÓSITO. Irreversível.
+-- Antes: (1) faça backup; (2) procure no código por admin_users, admin_login_attempts e audit_logs;
+-- (3) confirme que o painel Clerk Staff funciona; (4) só então descomente e rode manualmente.
 -- drop table if exists public.admin_users cascade;
 -- drop table if exists public.admin_login_attempts cascade;
--- If the application no longer references audit_logs, remove it manually too:
--- drop table if exists public.audit_logs cascade;
+-- NÃO remova audit_logs enquanto o webhook ou outro código gravar nela.
+-- A auditoria do painel é public.admin_audit_log (003).

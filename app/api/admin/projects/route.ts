@@ -1,8 +1,65 @@
 import { z } from "zod"
-import { requirePermission, ForbiddenError, ADMIN_PERMISSIONS } from "@/lib/admin-auth"
+import { ADMIN_PERMISSIONS, ForbiddenError, requirePermission } from "@/lib/admin-auth"
+import { jsonError } from "@/lib/admin"
+import { writeAdminAuditLog } from "@/lib/audit"
+import { excluirProjetoCompleto } from "@/lib/projects/delete-project"
 import { createAdminClient } from "@/lib/supabase/server"
-import { jsonError, writeAuditLog } from "@/lib/admin"
 
-export async function GET() { let access; try { access = await requirePermission(ADMIN_PERMISSIONS.usersRead) } catch (error) { if (error instanceof ForbiddenError) return jsonError("Permissão insuficiente", 403); throw error } const { data, error } = await createAdminClient().from("projects").select("id,user_id,name,status,area_m2,created_at").order("created_at", { ascending: false }); if (error) return jsonError("Não foi possível carregar projetos", 500); return Response.json({ ok: true, data }) }
+export async function GET() {
+  try {
+    await requirePermission(ADMIN_PERMISSIONS.projectsRead)
+  } catch (error) {
+    if (error instanceof ForbiddenError) return jsonError("Permissão insuficiente", 403)
+    throw error
+  }
+
+  const { data, error } = await createAdminClient()
+    .from("projects")
+    .select("id,user_id,name,status,area_m2,created_at")
+    .order("created_at", { ascending: false })
+
+  if (error) return jsonError("Não foi possível carregar projetos", 500)
+  return Response.json({ ok: true, data })
+}
+
 const deleteSchema = z.object({ id: z.string().uuid() })
-export async function DELETE(request: Request) { let access; try { access = await requirePermission(ADMIN_PERMISSIONS.usersManage) } catch (error) { if (error instanceof ForbiddenError) return jsonError("Permissão insuficiente", 403); throw error } const parsed = deleteSchema.safeParse(await request.json().catch(() => null)); if (!parsed.success) return jsonError("ID de projeto inválido"); const supabase = createAdminClient(); const { data: project } = await supabase.from("projects").select("id,user_id,name,source_pdf_path").eq("id", parsed.data.id).maybeSingle(); if (!project) return jsonError("Projeto não encontrado", 404); if (project.user_id === access.userId) return jsonError("Você não pode excluir seu próprio projeto", 403); const { error } = await supabase.from("projects").delete().eq("id", project.id); if (error) return jsonError("Não foi possível excluir projeto", 500); if (project.source_pdf_path) await supabase.storage.from("memoriais").remove([project.source_pdf_path]); await writeAuditLog(access.userId, "project.deleted", project.user_id, { projectId: project.id, name: project.name }); return Response.json({ ok: true }) }
+
+export async function DELETE(request: Request) {
+  let access
+  try {
+    access = await requirePermission(ADMIN_PERMISSIONS.projectsManage)
+  } catch (error) {
+    if (error instanceof ForbiddenError) return jsonError("Permissão insuficiente", 403)
+    throw error
+  }
+
+  const parsed = deleteSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) return jsonError("ID de projeto inválido")
+
+  const supabase = createAdminClient()
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .select("id,user_id")
+    .eq("id", parsed.data.id)
+    .maybeSingle()
+
+  if (projectError) return jsonError("Não foi possível carregar projeto", 500)
+  if (!project) return jsonError("Projeto não encontrado", 404)
+  if (project.user_id === access.userId) return jsonError("Você não pode excluir seu próprio projeto", 403)
+
+  try {
+    const result = await excluirProjetoCompleto(project.id, project.user_id)
+    if (!result.ok) return jsonError("Projeto não encontrado", 404)
+  } catch {
+    return jsonError("Não foi possível excluir projeto e arquivos associados", 500)
+  }
+
+  await writeAdminAuditLog({
+    actorId: access.userId,
+    targetUserId: project.user_id,
+    action: "project.deleted",
+    metadata: { projectId: project.id },
+  })
+
+  return Response.json({ ok: true })
+}

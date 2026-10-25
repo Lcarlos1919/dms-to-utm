@@ -100,14 +100,6 @@ export async function processMemorial(projectId: string, userId: string): Promis
       throw new MemorialProcessingError(result.erro.codigo, result.erro.mensagem)
     }
 
-    const uniqueCodes = new Set(result.vertices.map((vertex) => vertex.codigo))
-    if (uniqueCodes.size !== result.vertices.length) {
-      throw new MemorialProcessingError(
-        "CODIGO_VERTICE_DUPLICADO",
-        "O memorial contém códigos de vértice repetidos. Revise o arquivo e tente novamente.",
-      )
-    }
-
     const vertexRows = result.vertices.map((vertex) => verticeParaLinha(projectId, vertex))
     const { error: deleteError } = await db
       .from("project_vertices")
@@ -128,7 +120,8 @@ export async function processMemorial(projectId: string, userId: string): Promis
       .update({
         ...projetoDoResultado(result),
         vertices: result.vertices.map((vertex) => ({
-          id: vertex.codigo,
+          id: String(vertex.seq),
+          code: vertex.codigo,
           e: vertex.este,
           n: vertex.norte,
           azimuth: vertex.azimuteDms,

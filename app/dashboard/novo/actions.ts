@@ -36,24 +36,48 @@ export async function createProject(input: CreateProjectInput): Promise<CreatePr
   if (!usage.canCreate) return { ok: false, error: "Você atingiu o limite do plano Grátis neste mês.", limitReached: true }
   const supabase = createAdminClient()
   const projectId = crypto.randomUUID()
-  const storagePath = `${userId}/${projectId}.pdf`
+  const storagePath = `${userId}/${projectId}/arquivo.pdf`
   if (isFormData && file instanceof File) {
     const { error } = await supabase.storage.from("memoriais").upload(storagePath, file, { contentType: "application/pdf", upsert: false })
     if (error) return { ok: false, error: "Não foi possível enviar o PDF. Tente novamente." }
   }
   const { error: insertError } = await supabase.from("projects").insert({ id: projectId, user_id: userId, name: parsed.data.name, status: "draft", source_pdf_path: storagePath, original_filename: fileName })
-  if (insertError) { if (isFormData) await supabase.storage.from("memoriais").remove([storagePath]); return { ok: false, error: "Não foi possível criar o projeto. Tente novamente." } }
+  if (insertError) {
+    if (isFormData) {
+      const { error: storageCleanupError } = await supabase.storage.from("memoriais").remove([storagePath])
+      if (storageCleanupError) return { ok: false, error: "Não foi possível criar o projeto nem limpar o arquivo enviado." }
+    }
+    return { ok: false, error: "Não foi possível criar o projeto. Tente novamente." }
+  }
   const { error: fileRecordError } = await supabase.from("project_files").insert({ project_id: projectId, kind: "memorial_pdf", storage_path: storagePath, original_filename: fileName, mime_type: "application/pdf", size_bytes: isFormData && file instanceof File ? file.size : null })
-  if (fileRecordError) { await supabase.from("projects").delete().eq("id", projectId).eq("user_id", userId); if (isFormData) await supabase.storage.from("memoriais").remove([storagePath]); return { ok: false, error: "Não foi possível registrar o memorial. Tente novamente." } }
+  if (fileRecordError) {
+    try {
+      const cleanup = await excluirProjetoCompleto(projectId, userId)
+      if (!cleanup.ok) return { ok: false, error: "Não foi possível registrar o memorial nem limpar o projeto." }
+    } catch {
+      return { ok: false, error: "Não foi possível registrar o memorial nem limpar o projeto." }
+    }
+    return { ok: false, error: "Não foi possível registrar o memorial. Tente novamente." }
+  }
   await processMemorial(projectId, userId)
   return { ok: true, projectId, storagePath }
 }
 
 export async function attachSourcePdf(projectId: string, storagePath: string) {
   const userId = await requireUser()
-  if (!storagePath.startsWith(`${userId}/`)) return { ok: false as const, error: "Caminho de arquivo inválido." }
-  const { error } = await createAdminClient().from("projects").update({ source_pdf_path: storagePath }).eq("id", projectId).eq("user_id", userId)
-  return error ? { ok: false as const, error: "Não foi possível anexar o PDF." } : { ok: true as const }
+  const expectedStoragePath = `${userId}/${projectId}/arquivo.pdf`
+  if (storagePath !== expectedStoragePath) return { ok: false as const, error: "Caminho de arquivo inválido." }
+
+  const { data, error } = await createAdminClient()
+    .from("projects")
+    .update({ source_pdf_path: storagePath })
+    .eq("id", projectId)
+    .eq("user_id", userId)
+    .select("id")
+    .maybeSingle()
+
+  if (error || !data) return { ok: false as const, error: "Não foi possível anexar o PDF." }
+  return { ok: true as const }
 }
 
 export async function excluirProjeto(projectId: string) {
@@ -93,11 +117,6 @@ const vertexSchema = z.object({
 const saveVerticesSchema = z.object({
   projectId: z.string().uuid(),
   vertices: z.array(vertexSchema).max(500),
-}).superRefine(({ vertices }, context) => {
-  const codes = new Set(vertices.map((vertex) => vertex.codigo))
-  if (codes.size !== vertices.length) {
-    context.addIssue({ code: "custom", path: ["vertices"], message: "Os códigos dos vértices precisam ser únicos." })
-  }
 })
 
 export async function saveProjectVertices(input: unknown) {
@@ -135,7 +154,8 @@ export async function saveProjectVertices(input: unknown) {
     .from("projects")
     .update({
       vertices: vertices.map((vertex) => ({
-        id: vertex.codigo,
+        id: String(vertex.seq),
+        code: vertex.codigo,
         e: vertex.este,
         n: vertex.norte,
         azimuth: vertex.azimuteDms,

@@ -2,12 +2,12 @@ import "server-only"
 
 import { createAdminClient } from "@/lib/supabase/server"
 
-/** Remove todos os dados e o PDF de um projeto pertencente ao usuário. */
+/** Remove os arquivos do Storage e, em seguida, os dados do projeto pertencente ao usuário. */
 export async function excluirProjetoCompleto(projectId: string, userId: string) {
   const supabase = createAdminClient()
   const { data: project, error: projectError } = await supabase
     .from("projects")
-    .select("id, source_pdf_path")
+    .select("id,source_pdf_path")
     .eq("id", projectId)
     .eq("user_id", userId)
     .maybeSingle()
@@ -15,23 +15,55 @@ export async function excluirProjetoCompleto(projectId: string, userId: string) 
   if (projectError) throw new Error("Não foi possível localizar o projeto.")
   if (!project) return { ok: false as const, error: "Projeto não encontrado." }
 
-  const projectIds = [projectId]
-  await supabase.from("project_vertices").delete().in("project_id", projectIds)
-  await supabase.from("project_files").delete().in("project_id", projectIds)
-  await supabase.from("processing_jobs").delete().in("project_id", projectIds)
-  await supabase.from("audit_logs").delete().in("project_id", projectIds)
+  const { data: projectFiles, error: filesError } = await supabase
+    .from("project_files")
+    .select("storage_path")
+    .eq("project_id", projectId)
 
-  if (project.source_pdf_path) {
-    await supabase.storage.from("memoriais").remove([project.source_pdf_path])
+  if (filesError) throw new Error("Não foi possível localizar os arquivos do projeto.")
+
+  const storagePaths = new Set<string>()
+  if (project.source_pdf_path) storagePaths.add(project.source_pdf_path)
+  for (const file of projectFiles ?? []) {
+    if (file.storage_path) storagePaths.add(file.storage_path)
   }
 
-  const { error: deleteError } = await supabase
+  if (storagePaths.size > 0) {
+    const { error: storageError } = await supabase.storage
+      .from("memoriais")
+      .remove([...storagePaths])
+    if (storageError) throw new Error("Não foi possível remover os arquivos do Storage.")
+  }
+
+  const { error: filesDeleteError } = await supabase
+    .from("project_files")
+    .delete()
+    .eq("project_id", projectId)
+  if (filesDeleteError) throw new Error("Não foi possível remover os arquivos do projeto.")
+
+  const { error: verticesDeleteError } = await supabase
+    .from("project_vertices")
+    .delete()
+    .eq("project_id", projectId)
+  if (verticesDeleteError) throw new Error("Não foi possível remover os vértices do projeto.")
+
+  const { error: jobsDeleteError } = await supabase
+    .from("processing_jobs")
+    .delete()
+    .eq("project_id", projectId)
+  if (jobsDeleteError) throw new Error("Não foi possível remover o processamento do projeto.")
+
+  const { data: deletedProject, error: deleteError } = await supabase
     .from("projects")
     .delete()
     .eq("id", projectId)
     .eq("user_id", userId)
+    .select("id")
+    .maybeSingle()
 
   if (deleteError) throw new Error("Não foi possível excluir o projeto.")
+  if (!deletedProject) return { ok: false as const, error: "Projeto não encontrado." }
+
   return { ok: true as const }
 }
 

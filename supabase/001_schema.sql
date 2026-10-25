@@ -42,8 +42,7 @@ create table if not exists public.project_vertices (
   edited boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (project_id, seq),
-  unique (project_id, code)
+  unique (project_id, seq)
 );
 create index if not exists project_vertices_project_idx on public.project_vertices(project_id, seq);
 
