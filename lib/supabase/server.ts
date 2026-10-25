@@ -2,7 +2,17 @@ import "server-only"
 
 import { auth } from "@clerk/nextjs/server"
 import { createClient } from "@supabase/supabase-js"
-import { supabasePublishableKey, supabaseSecretKey, supabaseUrl } from "./config"
+import { supabasePublishableKey, supabaseUrl } from "./config"
+
+const supabaseSecretKey =
+  process.env.SUPABASE_SECRET_KEY_2 ||
+  process.env.SUPABASE_SERVICE_ROLE_KEY_2 ||
+  process.env.SUPABASE_SECRET_KEY ||
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+
+export function isSupabaseAdminConfigured() {
+  return Boolean(supabaseUrl && supabaseSecretKey)
+}
 
 /** Respects RLS: requests are authenticated with the current Clerk session token. */
 export function createServerClient() {
