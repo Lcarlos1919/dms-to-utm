@@ -5,10 +5,10 @@ import { createClient } from "@supabase/supabase-js"
 import { supabasePublishableKey, supabaseUrl } from "./config"
 
 const supabaseSecretKey =
-  process.env.SUPABASE_SECRET_KEY_2 ||
-  process.env.SUPABASE_SERVICE_ROLE_KEY_2 ||
   process.env.SUPABASE_SECRET_KEY ||
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SECRET_KEY_2 ||
+  process.env.SUPABASE_SERVICE_ROLE_KEY_2
 
 export function isSupabaseAdminConfigured() {
   return Boolean(supabaseUrl && supabaseSecretKey)
