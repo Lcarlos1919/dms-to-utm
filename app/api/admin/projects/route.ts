@@ -1,17 +1,13 @@
 import { z } from "zod"
-import { ADMIN_PERMISSIONS, ForbiddenError, requirePermission } from "@/lib/admin-auth"
+import { ADMIN_PERMISSIONS, requireStaffApiPermission } from "@/lib/admin-auth"
 import { jsonError } from "@/lib/admin"
 import { writeAdminAuditLog } from "@/lib/audit"
 import { excluirProjetoCompleto } from "@/lib/projects/delete-project"
 import { createAdminClient } from "@/lib/supabase/server"
 
 export async function GET() {
-  try {
-    await requirePermission(ADMIN_PERMISSIONS.projectsRead)
-  } catch (error) {
-    if (error instanceof ForbiddenError) return jsonError("Permissão insuficiente", 403)
-    throw error
-  }
+  const authorization = await requireStaffApiPermission(ADMIN_PERMISSIONS.projectsRead)
+  if (!authorization.ok) return authorization.response
 
   const { data, error } = await createAdminClient()
     .from("projects")
@@ -25,13 +21,9 @@ export async function GET() {
 const deleteSchema = z.object({ id: z.string().uuid() })
 
 export async function DELETE(request: Request) {
-  let access
-  try {
-    access = await requirePermission(ADMIN_PERMISSIONS.projectsManage)
-  } catch (error) {
-    if (error instanceof ForbiddenError) return jsonError("Permissão insuficiente", 403)
-    throw error
-  }
+  const authorization = await requireStaffApiPermission(ADMIN_PERMISSIONS.projectsManage)
+  if (!authorization.ok) return authorization.response
+  const access = authorization.context
 
   const parsed = deleteSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return jsonError("ID de projeto inválido")

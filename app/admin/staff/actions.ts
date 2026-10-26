@@ -15,13 +15,17 @@ export async function inviteStaffMember(formData: FormData) {
   const email = emailSchema.parse(formData.get("email"))
   const role = roleSchema.parse(formData.get("role"))
   const client = await clerkClient()
-  await client.organizations.createOrganizationInvitation({
+  const invitation = await client.organizations.createOrganizationInvitation({
     organizationId: context.orgId,
     emailAddress: email,
     role,
     inviterUserId: context.userId,
   })
-  await writeAdminAuditLog({ actorId: context.userId, action: "staff.invitation.created", metadata: { role } })
+  await writeAdminAuditLog({
+    actorId: context.userId,
+    action: "staff.invitation.created",
+    metadata: { role, invitationId: invitation.id },
+  })
   revalidatePath("/admin/staff")
 }
 
@@ -60,7 +64,11 @@ export async function revokeStaffInvitation(formData: FormData) {
   const invitationId = idSchema.parse(formData.get("invitationId"))
   const client = await clerkClient()
   await client.organizations.revokeOrganizationInvitation({ organizationId: context.orgId, invitationId })
-  await writeAdminAuditLog({ actorId: context.userId, action: "staff.invitation.revoked" })
+  await writeAdminAuditLog({
+    actorId: context.userId,
+    action: "staff.invitation.revoked",
+    metadata: { invitationId },
+  })
   revalidatePath("/admin/staff")
 }
 

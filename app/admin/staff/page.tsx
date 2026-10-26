@@ -7,9 +7,9 @@ import { inviteStaffMember, changeStaffRole, removeStaffMember, revokeStaffInvit
 const roles = ["org:admin", "org:support", "org:finance", "org:viewer"] as const
 const permissionMatrix = [
   ["org:admin", "Acesso total, equipe e configurações"],
-  ["org:support", "Gerencia usuários e projetos; consulta auditoria"],
-  ["org:finance", "Consulta usuários, assinaturas e uso; gerencia planos"],
-  ["org:viewer", "Consulta usuários e projetos"],
+  ["org:support", "Gerencia usuários e projetos"],
+  ["org:finance", "Consulta assinaturas e uso"],
+  ["org:viewer", "Leitura em usuários, projetos, planos, assinaturas, uso e auditoria"],
 ]
 
 export default async function StaffPage() {

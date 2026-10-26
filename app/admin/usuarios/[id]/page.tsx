@@ -7,8 +7,9 @@ import { createAdminClient } from "@/lib/supabase/server"
 export const dynamic = "force-dynamic"
 
 export default async function AdminUserDetail({ params }: { params: Promise<{ id: string }> }) {
+  let access
   try {
-    await requirePermission(ADMIN_PERMISSIONS.usersManage)
+    access = await requirePermission(ADMIN_PERMISSIONS.usersRead)
   } catch (error) {
     if (error instanceof ForbiddenError) return <Forbidden />
     throw error
@@ -16,11 +17,16 @@ export default async function AdminUserDetail({ params }: { params: Promise<{ id
 
   const { id } = await params
   const supabase = createAdminClient()
+  const canReadExtendedData = access.orgRole !== "org:support"
   const [profileResult, usageResult, projectsResult, logsResult] = await Promise.all([
     supabase.from("profiles").select("user_id,email,full_name,plan,role,bonus_credits,created_at").eq("user_id", id).maybeSingle(),
-    supabase.from("usage").select("month,memorials_used").eq("user_id", id).order("month", { ascending: false }).limit(12),
+    canReadExtendedData
+      ? supabase.from("usage").select("month,memorials_used").eq("user_id", id).order("month", { ascending: false }).limit(12)
+      : Promise.resolve({ data: [], error: null }),
     supabase.from("projects").select("id,name,status,area_m2,created_at").eq("user_id", id).order("created_at", { ascending: false }).limit(50),
-    supabase.from("admin_audit_log").select("actor_id,action,target_user_id,created_at").eq("target_user_id", id).order("created_at", { ascending: false }).limit(50),
+    canReadExtendedData
+      ? supabase.from("admin_audit_log").select("actor_id,action,target_user_id,created_at").eq("target_user_id", id).order("created_at", { ascending: false }).limit(50)
+      : Promise.resolve({ data: [], error: null }),
   ])
 
   if (profileResult.error || usageResult.error || projectsResult.error || logsResult.error) {
@@ -38,13 +44,15 @@ export default async function AdminUserDetail({ params }: { params: Promise<{ id
         <div>Créditos bônus<strong className="block">{profile.bonus_credits}</strong></div>
         <div>Criado em<strong className="block">{new Date(profile.created_at).toLocaleDateString("pt-BR")}</strong></div>
       </div>
-      <AdminTable
-        headers={["Mês", "Memoriais usados"]}
-        rows={(usageResult.data ?? []).map((item) => [
-          new Date(item.month).toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
-          String(item.memorials_used),
-        ])}
-      />
+      {canReadExtendedData && (
+        <AdminTable
+          headers={["Mês", "Memoriais usados"]}
+          rows={(usageResult.data ?? []).map((item) => [
+            new Date(item.month).toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
+            String(item.memorials_used),
+          ])}
+        />
+      )}
       <AdminTable
         headers={["Projeto", "Status", "Área", "Criado em"]}
         rows={(projectsResult.data ?? []).map((item) => [
@@ -54,14 +62,16 @@ export default async function AdminUserDetail({ params }: { params: Promise<{ id
           new Date(item.created_at).toLocaleDateString("pt-BR"),
         ])}
       />
-      <AdminTable
-        headers={["Ator", "Ação", "Data"]}
-        rows={(logsResult.data ?? []).map((item) => [
-          item.actor_id,
-          item.action,
-          new Date(item.created_at).toLocaleString("pt-BR"),
-        ])}
-      />
+      {canReadExtendedData && (
+        <AdminTable
+          headers={["Ator", "Ação", "Data"]}
+          rows={(logsResult.data ?? []).map((item) => [
+            item.actor_id,
+            item.action,
+            new Date(item.created_at).toLocaleString("pt-BR"),
+          ])}
+        />
+      )}
     </AdminPage>
   )
 }
