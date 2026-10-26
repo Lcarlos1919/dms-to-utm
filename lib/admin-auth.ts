@@ -2,6 +2,11 @@ import "server-only"
 
 import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
+import { getStaffAccess, isStaffRole } from "@/lib/staff"
+import type { StaffRole } from "@/lib/staff"
+
+export { STAFF_ROLES } from "@/lib/staff"
+export type { StaffRole } from "@/lib/staff"
 
 export const ADMIN_PERMISSIONS = {
   usersRead: "org:users:read",
@@ -9,14 +14,12 @@ export const ADMIN_PERMISSIONS = {
   projectsRead: "org:projects:read",
   projectsManage: "org:projects:manage",
   auditRead: "org:audit:read",
+  plansRead: "org:plans:read",
   plansManage: "org:plans:manage",
   staffManage: "org:staff:manage",
   billingRead: "org:billing:read",
   usageRead: "org:usage:read",
 } as const
-
-export const STAFF_ROLES = ["org:admin", "org:support", "org:finance", "org:viewer"] as const
-export type StaffRole = (typeof STAFF_ROLES)[number]
 
 export type StaffContext = {
   userId: string
@@ -32,37 +35,47 @@ const ROLE_PERMISSIONS: Record<StaffRole, readonly string[]> = {
     ADMIN_PERMISSIONS.usersManage,
     ADMIN_PERMISSIONS.projectsRead,
     ADMIN_PERMISSIONS.projectsManage,
-    ADMIN_PERMISSIONS.auditRead,
   ],
-  "org:finance": [
+  "org:finance": [ADMIN_PERMISSIONS.billingRead, ADMIN_PERMISSIONS.usageRead],
+  "org:viewer": [
     ADMIN_PERMISSIONS.usersRead,
-    ADMIN_PERMISSIONS.plansManage,
+    ADMIN_PERMISSIONS.projectsRead,
+    ADMIN_PERMISSIONS.auditRead,
+    ADMIN_PERMISSIONS.plansRead,
     ADMIN_PERMISSIONS.billingRead,
     ADMIN_PERMISSIONS.usageRead,
   ],
-  "org:viewer": [ADMIN_PERMISSIONS.usersRead, ADMIN_PERMISSIONS.projectsRead],
 }
 
-function isStaffRole(role: string | null | undefined): role is StaffRole {
-  return role !== null && role !== undefined && STAFF_ROLES.includes(role as StaffRole)
+export function getStaffPermissions(role: StaffRole): string[] {
+  return [...ROLE_PERMISSIONS[role]]
 }
 
-function toStaffContext(userId: string, orgId: string | null | undefined, orgRole: string | null | undefined): StaffContext | null {
-  const configuredOrgId = process.env.CLERK_STAFF_ORG_ID
-  if (!configuredOrgId || !orgId || orgId !== configuredOrgId || !isStaffRole(orgRole)) return null
-  return { userId, orgId, orgRole, permissions: [...ROLE_PERMISSIONS[orgRole]] }
+async function getStaffContextForUser(userId: string): Promise<StaffContext | null> {
+  const access = await getStaffAccess()
+  const orgId = process.env.CLERK_STAFF_ORG_ID
+
+  if (!access.isStaff || !isStaffRole(access.role) || !orgId) return null
+
+  return {
+    userId,
+    orgId,
+    orgRole: access.role,
+    permissions: getStaffPermissions(access.role),
+  }
 }
 
 export async function getStaffContext(): Promise<StaffContext | null> {
-  const { userId, orgId, orgRole } = await auth()
+  const { userId } = await auth()
   if (!userId) return null
-  return toStaffContext(userId, orgId, orgRole)
+  return getStaffContextForUser(userId)
 }
 
 export async function requireStaff(): Promise<StaffContext> {
-  const { userId, orgId, orgRole } = await auth()
+  const { userId } = await auth()
   if (!userId) redirect("/sign-in")
-  const context = toStaffContext(userId, orgId, orgRole)
+
+  const context = await getStaffContextForUser(userId)
   if (!context) redirect("/dashboard")
   return context
 }
@@ -78,8 +91,26 @@ export class ForbiddenError extends Error {
   }
 }
 
+export type StaffApiAuthorization =
+  | { ok: true; context: StaffContext }
+  | { ok: false; response: Response }
+
+export async function requireStaffApiPermission(permission: string): Promise<StaffApiAuthorization> {
+  const { userId } = await auth()
+  if (!userId) {
+    return { ok: false, response: Response.json({ error: "Não autenticado" }, { status: 401 }) }
+  }
+
+  const context = await getStaffContextForUser(userId)
+  if (!context || !context.permissions.includes(permission)) {
+    return { ok: false, response: Response.json({ error: "Permissão insuficiente" }, { status: 403 }) }
+  }
+
+  return { ok: true, context }
+}
+
 export async function requirePermission(permission: string): Promise<StaffContext> {
   const context = await requireStaff()
-  if (!isStaffAdmin(context) && !context.permissions.includes(permission)) throw new ForbiddenError()
+  if (!context.permissions.includes(permission)) throw new ForbiddenError()
   return context
 }

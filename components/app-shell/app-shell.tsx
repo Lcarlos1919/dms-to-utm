@@ -33,7 +33,7 @@ export function AppShell({
         <nav aria-label="Navegação principal" className="p-3 flex-1">
           <SideNav variant={variant} adminPermissions={adminPermissions} adminRole={adminRole} />
         </nav>
-        {sidebarFooter && <div className="hidden md:block p-3 border-t border-zinc-900">{sidebarFooter}</div>}
+        {sidebarFooter && <div className="p-3 border-t border-zinc-900">{sidebarFooter}</div>}
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col">

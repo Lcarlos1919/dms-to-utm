@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { ADMIN_PERMISSIONS, ForbiddenError, requirePermission } from "@/lib/admin-auth"
+import { ADMIN_PERMISSIONS, requireStaffApiPermission } from "@/lib/admin-auth"
 import { jsonError } from "@/lib/admin"
 import { writeAdminAuditLog } from "@/lib/audit"
 import { createAdminClient } from "@/lib/supabase/server"
@@ -7,13 +7,9 @@ import { createAdminClient } from "@/lib/supabase/server"
 const schema = z.object({ userId: z.string().min(1), amount: z.number().int().positive().max(1000) })
 
 export async function POST(request: Request) {
-  let access
-  try {
-    access = await requirePermission(ADMIN_PERMISSIONS.usersManage)
-  } catch (error) {
-    if (error instanceof ForbiddenError) return jsonError("Permissão insuficiente", 403)
-    throw error
-  }
+  const authorization = await requireStaffApiPermission(ADMIN_PERMISSIONS.usersManage)
+  if (!authorization.ok) return authorization.response
+  const access = authorization.context
 
   const parsed = schema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return jsonError("Dados inválidos")

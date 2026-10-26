@@ -1,17 +1,12 @@
 import { z } from "zod"
-import { ADMIN_PERMISSIONS, ForbiddenError, requirePermission } from "@/lib/admin-auth"
+import { ADMIN_PERMISSIONS, requireStaffApiPermission } from "@/lib/admin-auth"
 import { jsonError } from "@/lib/admin"
 import { writeAdminAuditLog } from "@/lib/audit"
 import { createAdminClient } from "@/lib/supabase/server"
 
 export async function GET() {
-  let access
-  try {
-    access = await requirePermission(ADMIN_PERMISSIONS.usersRead)
-  } catch (error) {
-    if (error instanceof ForbiddenError) return jsonError("Permissão insuficiente", 403)
-    throw error
-  }
+  const authorization = await requireStaffApiPermission(ADMIN_PERMISSIONS.usersRead)
+  if (!authorization.ok) return authorization.response
 
   const { data, error } = await createAdminClient()
     .from("profiles")
@@ -34,16 +29,15 @@ const patchSchema = z.object({
 )
 
 export async function PATCH(request: Request) {
-  let access
-  try {
-    access = await requirePermission(ADMIN_PERMISSIONS.usersManage)
-  } catch (error) {
-    if (error instanceof ForbiddenError) return jsonError("Permissão insuficiente", 403)
-    throw error
-  }
+  const authorization = await requireStaffApiPermission(ADMIN_PERMISSIONS.usersManage)
+  if (!authorization.ok) return authorization.response
+  const access = authorization.context
 
   const parsed = patchSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return jsonError("Dados inválidos")
+  if (parsed.data.role !== undefined && access.orgRole !== "org:admin") {
+    return jsonError("Somente administradores podem alterar o perfil global", 403)
+  }
   if (parsed.data.userId === access.userId && parsed.data.role === "user") {
     return jsonError("Você não pode alterar seu próprio perfil para usuário", 403)
   }

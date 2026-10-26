@@ -3,6 +3,7 @@ import "server-only"
 import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import { getStaffContext, isStaffAdmin, requireStaff } from "@/lib/admin-auth"
+import { getStaffAccess } from "@/lib/staff"
 
 export async function requireUser() {
   const { userId } = await auth()
@@ -11,7 +12,7 @@ export async function requireUser() {
 }
 
 export async function hasStaffAccess() {
-  return Boolean(await getStaffContext())
+  return (await getStaffAccess()).isStaff
 }
 
 export async function requireAdmin() {
