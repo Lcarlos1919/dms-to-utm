@@ -1,9 +1,19 @@
 import "server-only"
 
+import { getMemorialPermissions } from "@/lib/profiles"
 import { createAdminClient } from "@/lib/supabase/server"
 
+export const MEMORIAL_DELETE_BLOCKED_MESSAGE = "A exclusão de memoriais está bloqueada para esta conta."
+
+export class ProjectDeletionPermissionError extends Error {
+  constructor() {
+    super(MEMORIAL_DELETE_BLOCKED_MESSAGE)
+    this.name = "ProjectDeletionPermissionError"
+  }
+}
+
 /** Remove os arquivos do Storage e, em seguida, os dados do projeto pertencente ao usuário. */
-export async function excluirProjetoCompleto(projectId: string, userId: string) {
+async function removerProjetoCompleto(projectId: string, userId: string) {
   const supabase = createAdminClient()
   const { data: project, error: projectError } = await supabase
     .from("projects")
@@ -67,9 +77,23 @@ export async function excluirProjetoCompleto(projectId: string, userId: string) 
   return { ok: true as const }
 }
 
+export async function excluirProjetoCompleto(projectId: string, userId: string) {
+  const permissions = await getMemorialPermissions(userId)
+  if (!permissions.canDeleteMemorials) throw new ProjectDeletionPermissionError()
+  return removerProjetoCompleto(projectId, userId)
+}
+
+export async function excluirProjetoCompletoComoAdmin(projectId: string, userId: string) {
+  return removerProjetoCompleto(projectId, userId)
+}
+
+export async function limparProjetoAposFalhaDeCriacao(projectId: string, userId: string) {
+  return removerProjetoCompleto(projectId, userId)
+}
+
 export async function excluirProjetoSemFalhar(projectId: string, userId: string) {
   try {
-    await excluirProjetoCompleto(projectId, userId)
+    await removerProjetoCompleto(projectId, userId)
   } catch {
     // O erro original do processamento continua sendo a mensagem exibida ao usuário.
   }

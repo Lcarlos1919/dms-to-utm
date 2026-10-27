@@ -4,7 +4,7 @@ import { ADMIN_PERMISSIONS, requireStaffApiPermission } from "@/lib/admin-auth"
 import { jsonError } from "@/lib/admin"
 import { writeAdminAuditLog } from "@/lib/audit"
 import { processMemorial } from "@/lib/engine"
-import { excluirProjetoCompleto } from "@/lib/projects/delete-project"
+import { excluirProjetoCompletoComoAdmin } from "@/lib/projects/delete-project"
 import { createAdminClient } from "@/lib/supabase/server"
 
 export const runtime = "nodejs"
@@ -93,7 +93,7 @@ export async function DELETE(request: Request) {
   if (!project) return jsonError("Projeto não encontrado", 404)
 
   try {
-    const result = await excluirProjetoCompleto(project.id, project.user_id)
+    const result = await excluirProjetoCompletoComoAdmin(project.id, project.user_id)
     if (!result.ok) return jsonError("Projeto não encontrado", 404)
   } catch {
     return jsonError("Não foi possível excluir projeto e arquivos associados", 500)
@@ -107,6 +107,8 @@ export async function DELETE(request: Request) {
   })
   revalidatePath("/admin/projetos")
   revalidatePath(`/admin/projetos/${project.id}`)
+  revalidatePath("/dashboard")
+  revalidatePath("/dashboard/planos")
 
   return Response.json({ ok: true })
 }

@@ -16,13 +16,30 @@ export async function POST(request: NextRequest) {
     const email = email_addresses.find((address) => address.id === event.data.primary_email_address_id)?.email_address ?? email_addresses[0]?.email_address ?? null
     const fullName = [first_name, last_name].filter(Boolean).join(" ") || null
     const role = public_metadata && typeof public_metadata === "object" && "role" in public_metadata && public_metadata.role === "admin" ? "admin" : "user"
+    const updatedAt = new Date().toISOString()
+    const supabase = createAdminClient()
 
-    const { error } = await createAdminClient().from("profiles").upsert(
-      { user_id: id, email, full_name: fullName, role, updated_at: new Date().toISOString() },
-      { onConflict: "user_id" },
+    const { error: createError } = await supabase.from("profiles").upsert(
+      {
+        user_id: id,
+        email,
+        full_name: fullName,
+        role,
+        can_create_memorials: true,
+        can_delete_memorials: false,
+        updated_at: updatedAt,
+      },
+      { onConflict: "user_id", ignoreDuplicates: true },
     )
 
-    if (error) return new Response("Não foi possível sincronizar o usuário", { status: 500 })
+    if (createError) return new Response("Não foi possível sincronizar o usuário", { status: 500 })
+
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({ email, full_name: fullName, role, updated_at: updatedAt })
+      .eq("user_id", id)
+
+    if (updateError) return new Response("Não foi possível sincronizar o usuário", { status: 500 })
   }
 
   if (event.type === "user.deleted") {
