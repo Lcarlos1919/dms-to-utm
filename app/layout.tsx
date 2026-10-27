@@ -74,7 +74,13 @@ export default function RootLayout({
         />
       </head>
       <body className={`${manrope.variable} font-sans antialiased bg-zinc-950 text-zinc-100`}>
-        <ClerkProvider publishableKey={clerkPublishableKey}>
+        <ClerkProvider
+          publishableKey={clerkPublishableKey}
+          localization={{
+            signIn: { start: { title: "Entrar no Vertix" } },
+            signUp: { start: { title: "Criar conta no Vertix" } },
+          }}
+        >
           <AppContent>{children}</AppContent>
         </ClerkProvider>
       </body>
