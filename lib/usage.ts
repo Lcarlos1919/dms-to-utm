@@ -1,6 +1,7 @@
 import "server-only"
 
 import { createAdminClient } from "@/lib/supabase/server"
+import { getMemorialPermissions } from "@/lib/profiles"
 
 export const DEFAULT_FREE_LIMIT = 3
 const USAGE_UPDATE_ATTEMPTS = 8
@@ -16,6 +17,8 @@ export type UsageStatus = {
   limit: number | null
   bonusCredits: number
   canCreate: boolean
+  canCreateMemorials: boolean
+  canDeleteMemorials: boolean
 }
 
 type UsageStatusOptions = {
@@ -66,11 +69,18 @@ export async function getUsageStatus(userId: string, options: UsageStatusOptions
     processingQuery = processingQuery.neq("id", options.excludeProcessingProjectId)
   }
 
-  const [{ data: profile, error: profileError }, { data: usage, error: usageError }, { count: processingCount, error: processingError }, freeLimit] = await Promise.all([
+  const [
+    { data: profile, error: profileError },
+    { data: usage, error: usageError },
+    { count: processingCount, error: processingError },
+    freeLimit,
+    permissions,
+  ] = await Promise.all([
     supabase.from("profiles").select("plan,bonus_credits").eq("user_id", userId).maybeSingle(),
     supabase.from("usage").select("memorials_used").eq("user_id", userId).eq("month", currentMonth()).maybeSingle(),
     processingQuery,
     getFreeMonthlyLimit(),
+    getMemorialPermissions(userId),
   ])
 
   if (profileError || usageError || processingError) throw new Error("Não foi possível consultar o uso do plano.")
@@ -79,13 +89,24 @@ export async function getUsageStatus(userId: string, options: UsageStatusOptions
   const bonusCredits = Number(profile?.bonus_credits ?? 0)
   const used = Number(usage?.memorials_used ?? 0)
   const reserved = processingCount ?? 0
+  const permissionState = {
+    canCreateMemorials: permissions.canCreateMemorials,
+    canDeleteMemorials: permissions.canDeleteMemorials,
+  }
 
   if (plan === "pro") {
-    return { plan, used, limit: null, bonusCredits, canCreate: true }
+    return { plan, used, limit: null, bonusCredits, canCreate: permissions.canCreateMemorials, ...permissionState }
   }
 
   const limit = freeLimit + bonusCredits
-  return { plan, used, limit, bonusCredits, canCreate: used + reserved < limit }
+  return {
+    plan,
+    used,
+    limit,
+    bonusCredits,
+    canCreate: permissions.canCreateMemorials && used + reserved < limit,
+    ...permissionState,
+  }
 }
 
 export async function incrementUsage(userId: string) {

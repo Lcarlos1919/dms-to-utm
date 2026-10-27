@@ -9,7 +9,7 @@ import { UsageCard } from "@/components/dashboard/usage-card"
 import { ProjectsTable, type ProjectRow } from "@/components/dashboard/projects-table"
 import { SetupNotice } from "@/components/setup-notice"
 
-export const metadata: Metadata = { title: "Projetos — TopoCAD" }
+export const metadata: Metadata = { title: "Projetos — Vertix" }
 
 export default async function DashboardPage() {
   const userId = await requireUser()
@@ -39,13 +39,28 @@ export default async function DashboardPage() {
           <h1 className="font-display text-2xl font-semibold text-zinc-100">Projetos</h1>
           <p className="text-sm text-zinc-500">Histórico dos seus memoriais processados.</p>
         </div>
-        <Link
-          href={usage.canCreate ? "/dashboard/novo" : "/dashboard/planos"}
-          className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-200 transition-colors"
-        >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          Novo projeto
-        </Link>
+        {usage.canCreateMemorials ? (
+          <Link
+            href={usage.canCreate ? "/dashboard/novo" : "/dashboard/planos"}
+            title={usage.canCreate ? undefined : "Você atingiu o limite mensal do plano. Consulte as opções disponíveis."}
+            className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            {usage.canCreate ? "Novo projeto" : "Ver planos"}
+          </Link>
+        ) : (
+          <span title="A criação de memoriais está bloqueada para esta conta. Contate o suporte para solicitar a liberação.">
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="inline-flex cursor-not-allowed items-center gap-2 rounded-full bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 opacity-50"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Novo projeto
+            </button>
+          </span>
+        )}
       </div>
 
       <UsageCard usage={usage} />
@@ -55,7 +70,7 @@ export default async function DashboardPage() {
           Não foi possível carregar os projetos: {error.message}
         </p>
       ) : (
-        <ProjectsTable projects={(projects ?? []) as ProjectRow[]} />
+        <ProjectsTable projects={(projects ?? []) as ProjectRow[]} canDeleteMemorials={usage.canDeleteMemorials} />
       )}
     </div>
   )

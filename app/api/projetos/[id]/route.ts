@@ -38,14 +38,13 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   const db = createAdminClient()
   const { data: profile, error: profileError } = await db
     .from("profiles")
-    .select("plan,can_delete_memorials")
+    .select("can_delete_memorials")
     .eq("user_id", userId)
     .maybeSingle()
 
-  if (profileError) return erroApi(500, "ERRO_BANCO", "Não foi possível verificar as permissões do plano.")
-  if (!profile) return erroApi(404, "NAO_ENCONTRADO", "Perfil não encontrado.")
-  if (profile.plan !== "pro" && !profile.can_delete_memorials) {
-    return erroApi(403, "PLANO_SEM_PERMISSAO", "Seu plano não permite excluir memoriais.")
+  if (profileError) return erroApi(500, "ERRO_BANCO", "Não foi possível verificar as permissões da conta.")
+  if (profile && profile.can_delete_memorials === false) {
+    return erroApi(403, "PERMISSAO_NEGADA", "A exclusão de memoriais está bloqueada para esta conta.")
   }
 
   try {

@@ -20,7 +20,7 @@ export function FooterSection() {
           {/* Brand */}
           <div className="col-span-2">
             <Link href="/" className="font-display text-xl font-semibold text-zinc-100">
-              TopoCAD
+              Vertix
             </Link>
             <p className="mt-4 text-sm text-zinc-500 max-w-xs">
               Do memorial descritivo em PDF ao DXF pronto no CAD, sem retrabalho manual.
@@ -56,7 +56,7 @@ export function FooterSection() {
 
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-zinc-900 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-zinc-600">© 2026 TopoCAD. Todos os direitos reservados.</p>
+          <p className="text-sm text-zinc-600">© 2026 Vertix. Todos os direitos reservados.</p>
           <div className="flex items-center gap-4 text-sm">
             {legalLinks.map((link) => (
               <Link key={link.label} href={link.href} className="text-zinc-500 hover:text-zinc-300 transition-colors">

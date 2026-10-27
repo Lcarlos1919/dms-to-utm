@@ -13,7 +13,7 @@ import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/ser
 import { STALE_PROCESSING_MESSAGE, isStaleProcessing, staleProcessingCutoff } from "@/lib/project-status"
 import { linhaParaVertice } from "@/lib/topocad-db/mapeamento"
 
-export const metadata: Metadata = { title: "Projeto — TopoCAD" }
+export const metadata: Metadata = { title: "Projeto — Vertix" }
 
 export default async function ProjetoPage({ params }: { params: Promise<{ id: string }> }) {
   const userId = await requireUser()

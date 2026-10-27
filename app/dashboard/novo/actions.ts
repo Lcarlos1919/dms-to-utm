@@ -1,6 +1,7 @@
 "use server"
 
 import { requireUser } from "@/lib/auth"
+import { getMemorialPermissions } from "@/lib/profiles"
 import { createAdminClient } from "@/lib/supabase/server"
 import { getUsageStatus, incrementUsage } from "@/lib/usage"
 import { processMemorial } from "@/lib/engine"
@@ -33,6 +34,7 @@ export async function createProject(input: CreateProjectInput): Promise<CreatePr
     if (String.fromCharCode(...magic) !== "%PDF") return { ok: false, error: "O conteúdo do arquivo não é um PDF válido." }
   }
   const usage = await getUsageStatus(userId)
+  if (!usage.canCreateMemorials) return { ok: false, error: "A criação de memoriais está bloqueada para esta conta." }
   if (!usage.canCreate) return { ok: false, error: "Você atingiu o limite do plano Grátis neste mês.", limitReached: true }
   const supabase = createAdminClient()
   const projectId = crypto.randomUUID()
@@ -82,10 +84,21 @@ export async function attachSourcePdf(projectId: string, storagePath: string) {
 
 export async function excluirProjeto(projectId: string) {
   const userId = await requireUser()
+  let permissions: Awaited<ReturnType<typeof getMemorialPermissions>>
+  try {
+    permissions = await getMemorialPermissions(userId)
+  } catch {
+    return { ok: false as const, error: "Não foi possível verificar a permissão para excluir o projeto." }
+  }
+
+  if (!permissions.canDeleteMemorials) {
+    return { ok: false as const, error: "A exclusão de memoriais está bloqueada para esta conta." }
+  }
+
   try {
     return await excluirProjetoCompleto(projectId, userId)
   } catch {
-    return { ok: false as const, error: "Não foi possível excluir o projeto." }
+    return { ok: false as const, error: "Não foi possível excluir o projeto e seus arquivos." }
   }
 }
 

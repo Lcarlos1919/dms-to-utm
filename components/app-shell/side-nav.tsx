@@ -38,7 +38,7 @@ const navItems: Record<"dashboard" | "admin", NavItem[]> = {
   ],
 }
 
-export function SideNav({ variant, adminPermissions = [], adminRole }: { variant: "dashboard" | "admin"; adminPermissions?: string[]; adminRole?: string }) {
+export function SideNav({ variant, adminPermissions = [], adminRole, createProjectDisabledReason }: { variant: "dashboard" | "admin"; adminPermissions?: string[]; adminRole?: string; createProjectDisabledReason?: string }) {
   const pathname = usePathname()
   const visibleItems = navItems[variant].filter((item) => variant !== "admin" || (!item.adminOnly || adminRole === "org:admin") && (!item.permission || adminRole === "org:admin" || adminPermissions.includes(item.permission)))
 
@@ -47,19 +47,37 @@ export function SideNav({ variant, adminPermissions = [], adminRole }: { variant
       {visibleItems.map((item) => {
         const Icon = item.icon
         const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
+        const disabledReason = variant === "dashboard" && item.href === "/dashboard/novo"
+          ? createProjectDisabledReason
+          : undefined
+
         return (
           <li key={item.href}>
-            <Link
-              href={item.href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-colors",
-                active ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100",
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-              {item.label}
-            </Link>
+            {disabledReason ? (
+              <span title={disabledReason} className="block">
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  className="flex w-full cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-left text-sm whitespace-nowrap text-zinc-500 opacity-50"
+                >
+                  <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  {item.label}
+                </button>
+              </span>
+            ) : (
+              <Link
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-colors",
+                  active ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100",
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {item.label}
+              </Link>
+            )}
           </li>
         )
       })}

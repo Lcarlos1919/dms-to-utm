@@ -17,12 +17,12 @@ const description =
   "Envie o memorial descritivo, converta DMS para UTM automaticamente, confira o polígono e exporte planilha e DXF para o AutoCAD. Sem retrabalho manual."
 
 export const metadata: Metadata = {
-  title: "TopoCAD — Memorial descritivo em PDF para DXF",
+  title: "Vertix — Memorial descritivo em PDF para DXF",
   description,
   generator: "v0.app",
-  applicationName: "TopoCAD",
+  applicationName: "Vertix",
   openGraph: {
-    title: "TopoCAD — Memorial descritivo em PDF para DXF",
+    title: "Vertix — Memorial descritivo em PDF para DXF",
     description,
     locale: "pt_BR",
     type: "website",

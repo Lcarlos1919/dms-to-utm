@@ -4,13 +4,26 @@ import { UserButton } from "@clerk/nextjs"
 import { ShieldCheck } from "lucide-react"
 import { AppShell } from "@/components/app-shell/app-shell"
 import { requireUser } from "@/lib/auth"
-import { ensureProfile } from "@/lib/profiles"
+import { ensureProfile, getMemorialPermissions } from "@/lib/profiles"
 import { isSupabaseAdminConfigured } from "@/lib/supabase/server"
 import { getStaffAccess } from "@/lib/staff"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const userId = await requireUser()
-  if (isSupabaseAdminConfigured()) await ensureProfile(userId)
+  let createProjectDisabledReason: string | undefined
+
+  if (isSupabaseAdminConfigured()) {
+    await ensureProfile(userId)
+    try {
+      const permissions = await getMemorialPermissions(userId)
+      if (!permissions.canCreateMemorials) {
+        createProjectDisabledReason = "A criação de memoriais está bloqueada para esta conta. Contate o suporte para solicitar a liberação."
+      }
+    } catch {
+      createProjectDisabledReason = "Não foi possível verificar a permissão de criação. Tente novamente mais tarde."
+    }
+  }
+
   const staff = await getStaffAccess()
   const sidebarFooter = staff.isStaff ? (
     <Link
@@ -27,6 +40,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <AppShell
       variant="dashboard"
       sidebarFooter={sidebarFooter}
+      createProjectDisabledReason={createProjectDisabledReason}
       topbarExtra={
         <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-visible">
           <UserButton

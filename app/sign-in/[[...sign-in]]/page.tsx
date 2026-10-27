@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { SignIn } from "@clerk/nextjs"
 
-export const metadata: Metadata = { title: "Entrar — TopoCAD" }
+export const metadata: Metadata = { title: "Entrar — Vertix" }
 
 export default function SignInPage() {
   return (

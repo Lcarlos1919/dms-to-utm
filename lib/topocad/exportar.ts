@@ -48,6 +48,7 @@ export function gerarDxf(vertices: Pick<Vertice, "codigo" | "este" | "norte">[])
 
   // HEADER
   g(0, "SECTION"); g(2, "HEADER");
+  g(999, "Vertix");
   g(9, "$ACADVER"); g(1, "AC1009");
   g(9, "$PDMODE"); g(70, 35);
   g(9, "$PDSIZE"); g(40, -2);
