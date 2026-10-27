@@ -18,7 +18,14 @@ export function UserPermissionControls({ user, canManage }: { user: User; canMan
     setStatus(response.ok ? "Salvo" : "Falha ao salvar")
   }
 
-  if (!canManage) return <span className="text-xs text-zinc-500">Somente leitura</span>
+  if (!canManage) {
+    return (
+      <div className="flex flex-col gap-1 text-xs text-zinc-400">
+        <span>Criação: {user.can_create_memorials ? "permitida" : "bloqueada"}</span>
+        <span>Exclusão: {user.can_delete_memorials ? "permitida" : "bloqueada"}</span>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-3 text-xs">

@@ -3,6 +3,7 @@ import { AdminPage, AdminTable } from "@/components/admin/admin-page"
 import { Forbidden } from "@/components/admin/forbidden"
 import { ADMIN_PERMISSIONS, ForbiddenError, requirePermission } from "@/lib/admin-auth"
 import { createAdminClient } from "@/lib/supabase/server"
+import { statusLabels, type ProjectStatus } from "@/lib/format"
 
 export const dynamic = "force-dynamic"
 
@@ -57,7 +58,7 @@ export default async function AdminUserDetail({ params }: { params: Promise<{ id
         headers={["Projeto", "Status", "Área", "Criado em"]}
         rows={(projectsResult.data ?? []).map((item) => [
           item.name,
-          item.status,
+          statusLabels[item.status as ProjectStatus] ?? "Desconhecido",
           item.area_m2 ? `${Number(item.area_m2).toLocaleString("pt-BR")} m²` : "—",
           new Date(item.created_at).toLocaleDateString("pt-BR"),
         ])}
