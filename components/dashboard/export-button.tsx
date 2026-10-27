@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Download, Loader2 } from "lucide-react"
 
-type ExportFormat = "xlsx" | "dxf"
+type ExportFormat = "xlsx" | "dxf" | "kml"
 
 function fileNameFrom(disposition: string | null, fallback: string) {
   const match = disposition?.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i)
@@ -14,15 +14,18 @@ export function ExportButton({
   projectId,
   format,
   disabled,
+  disabledReason,
   onError,
 }: {
   projectId: string
   format: ExportFormat
   disabled?: boolean
+  disabledReason?: string
   onError: (message: string | null) => void
 }) {
   const [isLoading, setIsLoading] = useState(false)
   const label = `Exportar ${format.toUpperCase()}`
+  const title = disabled ? disabledReason ?? "Processe o memorial antes de exportar." : undefined
 
   async function download() {
     onError(null)
@@ -51,19 +54,21 @@ export function ExportButton({
   }
 
   return (
-    <button
-      type="button"
-      onClick={download}
-      disabled={disabled || isLoading}
-      title={disabled ? "Processe o memorial antes de exportar." : undefined}
-      className="inline-flex items-center gap-2 rounded-full border border-zinc-800 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      {isLoading ? (
-        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-      ) : (
-        <Download className="h-4 w-4" aria-hidden="true" />
-      )}
-      {isLoading ? "Gerando..." : label}
-    </button>
+    <span className="inline-flex" title={title}>
+      <button
+        type="button"
+        onClick={download}
+        disabled={disabled || isLoading}
+        aria-label={`Exportar ${format.toUpperCase()}`}
+        className="inline-flex items-center gap-2 rounded-full border border-zinc-800 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+        ) : (
+          <Download className="h-4 w-4" aria-hidden="true" />
+        )}
+        {isLoading ? "Gerando..." : label}
+      </button>
+    </span>
   )
 }
