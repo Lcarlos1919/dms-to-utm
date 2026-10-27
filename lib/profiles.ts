@@ -20,7 +20,13 @@ export async function ensureProfile(userId: string) {
   const fullName = user.fullName || [user.firstName, user.lastName].filter(Boolean).join(" ") || null
 
   const { error: upsertError } = await supabase.from("profiles").upsert(
-    { user_id: user.id, email, full_name: fullName },
+    {
+      user_id: user.id,
+      email,
+      full_name: fullName,
+      can_create_memorials: true,
+      can_delete_memorials: false,
+    },
     { onConflict: "user_id", ignoreDuplicates: true },
   )
 
@@ -30,7 +36,7 @@ export async function ensureProfile(userId: string) {
 export async function getMemorialPermissions(userId: string) {
   const { data: profile, error } = await createAdminClient()
     .from("profiles")
-    .select("can_create_memorials,can_delete_memorials")
+    .select("can_create_memorials,can_delete_memorials,plan")
     .eq("user_id", userId)
     .maybeSingle()
 
@@ -38,6 +44,6 @@ export async function getMemorialPermissions(userId: string) {
 
   return {
     canCreateMemorials: profile?.can_create_memorials ?? true,
-    canDeleteMemorials: profile?.can_delete_memorials ?? true,
+    canDeleteMemorials: profile?.can_delete_memorials === true || profile?.plan === "pro",
   }
 }

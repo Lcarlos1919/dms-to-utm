@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { requireUser } from "@/lib/auth"
 import { getMemorialPermissions } from "@/lib/profiles"
 import { createAdminClient } from "@/lib/supabase/server"
@@ -7,7 +8,12 @@ import { getUsageStatus, incrementUsage } from "@/lib/usage"
 import { processMemorial } from "@/lib/engine"
 import { recalcularGeometria, type Vertice } from "@/lib/topocad"
 import { verticeParaLinha } from "@/lib/topocad-db/mapeamento"
-import { excluirProjetoCompleto } from "@/lib/projects/delete-project"
+import {
+  excluirProjetoCompleto,
+  limparProjetoAposFalhaDeCriacao,
+  MEMORIAL_DELETE_BLOCKED_MESSAGE,
+  ProjectDeletionPermissionError,
+} from "@/lib/projects/delete-project"
 import { z } from "zod"
 
 const MAX_SIZE = 10 * 1024 * 1024
@@ -54,7 +60,7 @@ export async function createProject(input: CreateProjectInput): Promise<CreatePr
   const { error: fileRecordError } = await supabase.from("project_files").insert({ project_id: projectId, kind: "memorial_pdf", storage_path: storagePath, original_filename: fileName, mime_type: "application/pdf", size_bytes: isFormData && file instanceof File ? file.size : null })
   if (fileRecordError) {
     try {
-      const cleanup = await excluirProjetoCompleto(projectId, userId)
+      const cleanup = await limparProjetoAposFalhaDeCriacao(projectId, userId)
       if (!cleanup.ok) return { ok: false, error: "Não foi possível registrar o memorial nem limpar o projeto." }
     } catch {
       return { ok: false, error: "Não foi possível registrar o memorial nem limpar o projeto." }
@@ -92,12 +98,20 @@ export async function excluirProjeto(projectId: string) {
   }
 
   if (!permissions.canDeleteMemorials) {
-    return { ok: false as const, error: "A exclusão de memoriais está bloqueada para esta conta." }
+    return { ok: false as const, error: MEMORIAL_DELETE_BLOCKED_MESSAGE }
   }
 
   try {
-    return await excluirProjetoCompleto(projectId, userId)
-  } catch {
+    const result = await excluirProjetoCompleto(projectId, userId)
+    if (result.ok) {
+      revalidatePath("/dashboard")
+      revalidatePath("/dashboard/planos")
+    }
+    return result
+  } catch (error) {
+    if (error instanceof ProjectDeletionPermissionError) {
+      return { ok: false as const, error: MEMORIAL_DELETE_BLOCKED_MESSAGE }
+    }
     return { ok: false as const, error: "Não foi possível excluir o projeto e seus arquivos." }
   }
 }

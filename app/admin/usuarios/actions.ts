@@ -26,6 +26,16 @@ export async function syncClerkUsers() {
         full_name: user.fullName || [user.firstName, user.lastName].filter(Boolean).join(" ") || null,
       }))
 
+      const { error: createError } = await supabase.from("profiles").upsert(
+        rows.map((row) => ({
+          ...row,
+          can_create_memorials: true,
+          can_delete_memorials: false,
+        })),
+        { onConflict: "user_id", ignoreDuplicates: true },
+      )
+      if (createError) throw new Error("Falha ao criar os perfis sincronizados.")
+
       const { error } = await supabase.from("profiles").upsert(rows, { onConflict: "user_id" })
       if (error) throw new Error("Falha ao sincronizar os perfis.")
 
