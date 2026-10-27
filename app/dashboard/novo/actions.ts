@@ -182,7 +182,7 @@ export async function saveProjectVertices(input: unknown) {
     .eq("user_id", userId)
     .eq("status", project.status)
     .eq("updated_at", project.updated_at)
-    .select("id")
+    .select("id,updated_at")
     .maybeSingle()
 
   if (updateError || !updatedProject) {
@@ -199,6 +199,7 @@ export async function saveProjectVertices(input: unknown) {
         .eq("id", parsed.data.projectId)
         .eq("user_id", userId)
         .eq("status", "ready")
+        .eq("updated_at", updatedProject.updated_at)
       return { ok: false as const, error: "Não foi possível registrar o uso do plano. Tente novamente." }
     }
   }

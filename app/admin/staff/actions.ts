@@ -12,19 +12,28 @@ const emailSchema = z.string().email()
 
 export async function inviteStaffMember(formData: FormData) {
   const context = await requirePermission(ADMIN_PERMISSIONS.staffManage)
-  const email = emailSchema.parse(formData.get("email"))
-  const role = roleSchema.parse(formData.get("role"))
+  const parsedEmail = emailSchema.safeParse(formData.get("email"))
+  const parsedRole = roleSchema.safeParse(formData.get("role"))
+  if (!parsedEmail.success || !parsedRole.success) throw new Error("Dados de convite inválidos.")
+
   const client = await clerkClient()
-  const invitation = await client.organizations.createOrganizationInvitation({
-    organizationId: context.orgId,
-    emailAddress: email,
-    role,
-    inviterUserId: context.userId,
-  })
+  let invitationId: string
+  try {
+    const invitation = await client.organizations.createOrganizationInvitation({
+      organizationId: context.orgId,
+      emailAddress: parsedEmail.data,
+      role: parsedRole.data,
+      inviterUserId: context.userId,
+    })
+    invitationId = invitation.id
+  } catch {
+    throw new Error("Não foi possível enviar o convite.")
+  }
+
   await writeAdminAuditLog({
     actorId: context.userId,
     action: "staff.invitation.created",
-    metadata: { role, invitationId: invitation.id },
+    metadata: { role: parsedRole.data, invitationId },
   })
   revalidatePath("/admin/staff")
 }

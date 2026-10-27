@@ -55,9 +55,9 @@ export default async function PlansPage() {
                 ? `${monthlyLimit} memoriais/mês`
                 : "Não definido"
             const priceLabel = priceCents !== null
-              ? priceCents === 0 ? "Grátis" : `${formatCurrency(priceCents)}/mês`
+              ? key === "free" && priceCents === 0 ? "Grátis" : `${formatCurrency(priceCents)}/mês`
               : price !== null
-                ? price === 0 ? "Grátis" : `${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price)}/mês`
+                ? key === "free" && price === 0 ? "Grátis" : `${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price)}/mês`
                 : "Preço não definido"
 
             return (
