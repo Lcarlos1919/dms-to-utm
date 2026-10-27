@@ -1,6 +1,8 @@
 import { AdminPage, AdminTable } from "@/components/admin/admin-page"
 import { Forbidden } from "@/components/admin/forbidden"
 import { ADMIN_PERMISSIONS, ForbiddenError, requirePermission } from "@/lib/admin-auth"
+import { resolveAdminUserDirectory } from "@/lib/admin-user-directory"
+import { formatMonth } from "@/lib/format"
 import { createAdminClient } from "@/lib/supabase/server"
 
 export default async function AdminUsagePage() {
@@ -17,17 +19,25 @@ export default async function AdminUsagePage() {
     .order("month", { ascending: false })
     .limit(100)
 
-  if (error) throw new Error("Falha ao carregar uso")
+  if (error) throw new Error("Falha ao carregar uso.")
+
+  const usageRows = data ?? []
+  const users = await resolveAdminUserDirectory(usageRows.map((usage) => usage.user_id))
 
   return (
     <AdminPage title="Uso" description="Consumo mensal de memoriais por usuário.">
       <AdminTable
         headers={["Usuário", "Mês", "Memoriais usados"]}
-        rows={(data ?? []).map((usage) => [
-          usage.user_id,
-          new Date(usage.month).toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
-          String(usage.memorials_used),
-        ])}
+        rows={usageRows.map((usage) => {
+          const identity = users.get(usage.user_id)
+          const name = identity?.fullName ?? "Sem nome"
+          const email = identity?.email ? ` · ${identity.email}` : ""
+          return [
+            `${name}${email}`,
+            formatMonth(usage.month),
+            String(usage.memorials_used),
+          ]
+        })}
       />
     </AdminPage>
   )

@@ -6,7 +6,6 @@ import { getUsageStatus, incrementUsage } from "@/lib/usage"
 import { ErroApp, extrairItensDoPdf } from "@/lib/pdf/extrair-itens"
 import { processarPaginas, type ResultadoMotor } from "@/lib/topocad"
 import { projetoDoResultado, verticeParaLinha } from "@/lib/topocad-db/mapeamento"
-import { excluirProjetoSemFalhar } from "@/lib/projects/delete-project"
 
 export type ProcessResult =
   | { ok: true; result: Extract<ResultadoMotor, { ok: true }> }
@@ -59,7 +58,9 @@ export async function processMemorial(projectId: string, userId: string): Promis
     }
   }
 
-  const usage = await getUsageStatus(userId)
+  const usage = await getUsageStatus(userId, {
+    excludeProcessingProjectId: project.status === "processing" && isStale ? projectId : undefined,
+  })
   if (!usage.canCreate) {
     return {
       ok: false,
@@ -69,20 +70,26 @@ export async function processMemorial(projectId: string, userId: string): Promis
     }
   }
 
-  const { error: processingError } = await db
+  const { data: claimedProject, error: processingError } = await db
     .from("projects")
     .update({ status: "processing", error_code: null, error_message: null })
     .eq("id", projectId)
     .eq("user_id", userId)
+    .eq("status", project.status)
+    .eq("updated_at", project.updated_at)
+    .select("id,updated_at")
+    .maybeSingle()
 
-  if (processingError) {
+  if (processingError || !claimedProject) {
     return {
       ok: false,
-      error: "STATUS_UPDATE_FAILED",
-      message: "Não foi possível iniciar o processamento.",
-      status: 500,
+      error: "PROJETO_EM_PROCESSAMENTO",
+      message: "O memorial já está sendo processado. Atualize a página e tente novamente.",
+      status: processingError ? 500 : 409,
     }
   }
+
+  let terminalUpdatedAt = claimedProject.updated_at
 
   try {
     const { data: file, error: downloadError } = await db.storage
@@ -115,7 +122,7 @@ export async function processMemorial(projectId: string, userId: string): Promis
       throw new MemorialProcessingError("VERTEX_PERSISTENCE_FAILED", "Não foi possível salvar os vértices do memorial.", 500)
     }
 
-    const { error: updateError } = await db
+    const { data: completedProject, error: updateError } = await db
       .from("projects")
       .update({
         ...projetoDoResultado(result),
@@ -130,12 +137,21 @@ export async function processMemorial(projectId: string, userId: string): Promis
       })
       .eq("id", projectId)
       .eq("user_id", userId)
+      .eq("status", "processing")
+      .eq("updated_at", claimedProject.updated_at)
+      .select("id,updated_at")
+      .maybeSingle()
 
-    if (updateError) {
+    if (updateError || !completedProject) {
       throw new MemorialProcessingError("PROJECT_UPDATE_FAILED", "Não foi possível atualizar o projeto processado.", 500)
     }
 
-    await incrementUsage(userId).catch(() => undefined)
+    terminalUpdatedAt = completedProject.updated_at
+    try {
+      await incrementUsage(userId)
+    } catch {
+      throw new MemorialProcessingError("USAGE_UPDATE_FAILED", "Não foi possível registrar o uso do memorial.", 500)
+    }
 
     return { ok: true, result }
   } catch (error) {
@@ -149,7 +165,13 @@ export async function processMemorial(projectId: string, userId: string): Promis
       : "Não foi possível processar o memorial. Confira o PDF e tente novamente."
     const status = error instanceof MemorialProcessingError ? error.status : error instanceof ErroApp ? 422 : 500
 
-    await excluirProjetoSemFalhar(projectId, userId)
+    await db
+      .from("projects")
+      .update({ status: "error", error_code: code, error_message: message })
+      .eq("id", projectId)
+      .eq("user_id", userId)
+      .eq("updated_at", terminalUpdatedAt)
+
     return { ok: false, error: code, message, status }
   }
 }

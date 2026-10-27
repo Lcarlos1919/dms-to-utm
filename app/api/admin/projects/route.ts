@@ -21,7 +21,7 @@ export async function GET() {
 const deleteSchema = z.object({ id: z.string().uuid() })
 
 export async function DELETE(request: Request) {
-  const authorization = await requireStaffApiPermission(ADMIN_PERMISSIONS.projectsManage)
+  const authorization = await requireStaffApiPermission(ADMIN_PERMISSIONS.projectsDelete)
   if (!authorization.ok) return authorization.response
   const access = authorization.context
 
@@ -37,7 +37,6 @@ export async function DELETE(request: Request) {
 
   if (projectError) return jsonError("Não foi possível carregar projeto", 500)
   if (!project) return jsonError("Projeto não encontrado", 404)
-  if (project.user_id === access.userId) return jsonError("Você não pode excluir seu próprio projeto", 403)
 
   try {
     const result = await excluirProjetoCompleto(project.id, project.user_id)

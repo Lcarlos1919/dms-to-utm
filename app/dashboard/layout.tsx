@@ -4,10 +4,13 @@ import { UserButton } from "@clerk/nextjs"
 import { ShieldCheck } from "lucide-react"
 import { AppShell } from "@/components/app-shell/app-shell"
 import { requireUser } from "@/lib/auth"
+import { ensureProfile } from "@/lib/profiles"
+import { isSupabaseAdminConfigured } from "@/lib/supabase/server"
 import { getStaffAccess } from "@/lib/staff"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  await requireUser()
+  const userId = await requireUser()
+  if (isSupabaseAdminConfigured()) await ensureProfile(userId)
   const staff = await getStaffAccess()
   const sidebarFooter = staff.isStaff ? (
     <Link

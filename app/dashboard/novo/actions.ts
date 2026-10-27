@@ -2,7 +2,7 @@
 
 import { requireUser } from "@/lib/auth"
 import { createAdminClient } from "@/lib/supabase/server"
-import { getUsageStatus } from "@/lib/usage"
+import { getUsageStatus, incrementUsage } from "@/lib/usage"
 import { processMemorial } from "@/lib/engine"
 import { recalcularGeometria, type Vertice } from "@/lib/topocad"
 import { verticeParaLinha } from "@/lib/topocad-db/mapeamento"
@@ -127,16 +127,25 @@ export async function saveProjectVertices(input: unknown) {
   const supabase = createAdminClient()
   const { data: project } = await supabase
     .from("projects")
-    .select("id")
+    .select("id,status,updated_at")
     .eq("id", parsed.data.projectId)
     .eq("user_id", userId)
     .maybeSingle()
 
   if (!project) return { ok: false as const, error: "Projeto não encontrado." }
+  if (!["draft", "error", "ready"].includes(project.status)) {
+    return { ok: false as const, error: "O projeto está sendo processado. Atualize a página e tente novamente." }
+  }
 
   const vertices: Vertice[] = parsed.data.vertices.map((vertex, index) => ({ ...vertex, seq: index + 1 }))
   const rows = vertices.map((vertex) => verticeParaLinha(parsed.data.projectId, vertex))
   const { geometria } = recalcularGeometria(vertices)
+  const shouldCountUsage = vertices.length >= 3 && project.status !== "ready"
+
+  if (shouldCountUsage) {
+    const usage = await getUsageStatus(userId)
+    if (!usage.canCreate) return { ok: false as const, error: "Você atingiu o limite de memoriais do plano Grátis neste mês." }
+  }
 
   const { error: deleteError } = await supabase
     .from("project_vertices")
@@ -150,7 +159,7 @@ export async function saveProjectVertices(input: unknown) {
     if (insertError) return { ok: false as const, error: "Não foi possível atualizar os vértices." }
   }
 
-  const { error: updateError } = await supabase
+  const { data: updatedProject, error: updateError } = await supabase
     .from("projects")
     .update({
       vertices: vertices.map((vertex) => ({
@@ -171,7 +180,29 @@ export async function saveProjectVertices(input: unknown) {
     })
     .eq("id", parsed.data.projectId)
     .eq("user_id", userId)
+    .eq("status", project.status)
+    .eq("updated_at", project.updated_at)
+    .select("id,updated_at")
+    .maybeSingle()
 
-  if (updateError) return { ok: false as const, error: "Não foi possível salvar as alterações do projeto." }
+  if (updateError || !updatedProject) {
+    return { ok: false as const, error: "Não foi possível salvar as alterações do projeto." }
+  }
+
+  if (shouldCountUsage) {
+    try {
+      await incrementUsage(userId)
+    } catch {
+      await supabase
+        .from("projects")
+        .update({ status: "error", error_code: "USAGE_UPDATE_FAILED", error_message: "Não foi possível registrar o uso do plano." })
+        .eq("id", parsed.data.projectId)
+        .eq("user_id", userId)
+        .eq("status", "ready")
+        .eq("updated_at", updatedProject.updated_at)
+      return { ok: false as const, error: "Não foi possível registrar o uso do plano. Tente novamente." }
+    }
+  }
+
   return { ok: true as const }
 }
