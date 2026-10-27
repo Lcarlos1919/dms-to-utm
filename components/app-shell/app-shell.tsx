@@ -8,6 +8,7 @@ export function AppShell({
   sidebarFooter,
   adminPermissions,
   adminRole,
+  createProjectDisabledReason,
   children,
 }: {
   variant: "dashboard" | "admin"
@@ -15,14 +16,15 @@ export function AppShell({
   sidebarFooter?: React.ReactNode
   adminPermissions?: string[]
   adminRole?: string
+  createProjectDisabledReason?: string
   children: React.ReactNode
 }) {
   return (
     <div className="min-h-screen bg-zinc-950 md:flex">
       <aside className="md:w-60 md:shrink-0 md:h-screen md:sticky md:top-0 border-b md:border-b-0 md:border-r border-zinc-900 flex flex-col">
         <div className="h-14 flex items-center gap-2 px-5 border-b border-zinc-900">
-          <Link href="/" className="font-display text-lg font-semibold text-zinc-100">
-            TopoCAD
+          <Link href={variant === "admin" ? "/admin" : "/dashboard"} className="font-display text-lg font-semibold text-zinc-100">
+            Vertix
           </Link>
           {variant === "admin" && (
             <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-900">
@@ -31,7 +33,12 @@ export function AppShell({
           )}
         </div>
         <nav aria-label="Navegação principal" className="p-3 flex-1">
-          <SideNav variant={variant} adminPermissions={adminPermissions} adminRole={adminRole} />
+          <SideNav
+            variant={variant}
+            adminPermissions={adminPermissions}
+            adminRole={adminRole}
+            createProjectDisabledReason={createProjectDisabledReason}
+          />
         </nav>
         {sidebarFooter && <div className="p-3 border-t border-zinc-900">{sidebarFooter}</div>}
       </aside>

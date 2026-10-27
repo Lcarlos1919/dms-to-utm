@@ -18,13 +18,14 @@ export type ProjectRow = {
 
 const projectGrid = "sm:grid-cols-[minmax(0,2fr)_minmax(110px,1fr)_minmax(110px,1fr)_minmax(130px,1fr)]"
 
-function DeleteProjectButton({ projectId, projectName }: { projectId: string; projectName: string }) {
+function DeleteProjectButton({ projectId, projectName, canDeleteMemorials }: { projectId: string; projectName: string; canDeleteMemorials: boolean }) {
   const [isPending, startTransition] = useTransition()
+  const disabledReason = "A exclusão de memoriais está bloqueada para esta conta. Contate o suporte para solicitar a liberação."
 
   function handleDelete(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault()
     event.stopPropagation()
-    if (!window.confirm(`Excluir o projeto “${projectName}” definitivamente?`)) return
+    if (!window.confirm(`Excluir o projeto “${projectName}” e seus arquivos definitivamente? Essa ação não pode ser desfeita.`)) return
     startTransition(async () => {
       const result = await excluirProjeto(projectId)
       if (!result.ok) window.alert(result.error)
@@ -33,19 +34,22 @@ function DeleteProjectButton({ projectId, projectName }: { projectId: string; pr
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleDelete}
-      disabled={isPending}
-      aria-label={`Excluir memorial ${projectName}`}
-      className="rounded-lg p-2 text-zinc-500 transition-colors hover:bg-red-950/40 hover:text-red-400 disabled:opacity-50"
-    >
-      <Trash2 className="h-4 w-4" aria-hidden="true" />
-    </button>
+    <span title={!canDeleteMemorials ? disabledReason : undefined} className="inline-flex">
+      <button
+        type="button"
+        onClick={handleDelete}
+        disabled={isPending || !canDeleteMemorials}
+        aria-disabled={!canDeleteMemorials}
+        aria-label={`Excluir memorial ${projectName}`}
+        className="rounded-lg p-2 text-zinc-500 transition-colors hover:bg-red-950/40 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Trash2 className="h-4 w-4" aria-hidden="true" />
+      </button>
+    </span>
   )
 }
 
-export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
+export function ProjectsTable({ projects, canDeleteMemorials = true }: { projects: ProjectRow[]; canDeleteMemorials?: boolean }) {
   if (projects.length === 0) {
     return (
       <DashboardCard>
@@ -67,19 +71,23 @@ export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
         <span>Criado em</span>
       </div>
       {projects.map((project) => (
-        <Link
-          key={project.id}
-          href={`/dashboard/projeto/${project.id}`}
-          aria-label={`Abrir memorial ${project.name}`}
-          className="block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
-        >
+        <div key={project.id}>
           <DashboardCard>
             <div className={`grid grid-cols-2 gap-x-4 gap-y-3 p-4 sm:grid-cols-4 sm:items-center sm:gap-4 ${projectGrid}`}>
               <div className="col-span-2 min-w-0 sm:col-span-1">
                 <span className="mb-1 block text-xs text-zinc-500 sm:hidden">Nome</span>
                 <div className="flex min-w-0 items-center gap-2">
-                  <p className="truncate font-medium text-zinc-100">{project.name}</p>
-                  <DeleteProjectButton projectId={project.id} projectName={project.name} />
+                  <Link
+                    href={`/dashboard/projeto/${project.id}`}
+                    className="truncate font-medium text-zinc-100 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-zinc-400"
+                  >
+                    {project.name}
+                  </Link>
+                  <DeleteProjectButton
+                    projectId={project.id}
+                    projectName={project.name}
+                    canDeleteMemorials={canDeleteMemorials}
+                  />
                 </div>
               </div>
               <div>
@@ -96,7 +104,7 @@ export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
               </div>
             </div>
           </DashboardCard>
-        </Link>
+        </div>
       ))}
     </div>
   )

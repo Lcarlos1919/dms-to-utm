@@ -44,10 +44,16 @@ export default async function PlansPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {planEntries.map(([key, value]) => {
             const plan = asRecord(value) ?? {}
-            const name = typeof plan.name === "string" ? plan.name : key
+            const normalizedKey = key.toLowerCase() === "premium" ? "pro" : key.toLowerCase()
+            const configuredName = typeof plan.name === "string" ? plan.name : normalizedKey
+            const name = normalizedKey === "free"
+              ? "Grátis"
+              : normalizedKey === "pro" || configuredName.toLowerCase().includes("premium")
+                ? "Pro"
+                : configuredName
             const priceCents = asNumber(plan.price_cents)
             const price = asNumber(plan.price)
-            const rawLimit = plan.monthly_limit ?? plan.free_monthly_limit ?? plan.limit ?? (key === "free" ? freeLimit : key === "pro" ? null : undefined)
+            const rawLimit = plan.monthly_limit ?? plan.free_monthly_limit ?? plan.limit ?? (normalizedKey === "free" ? freeLimit : normalizedKey === "pro" ? null : undefined)
             const monthlyLimit = asNumber(rawLimit)
             const limitLabel = rawLimit === null
               ? "Ilimitado"
@@ -55,15 +61,15 @@ export default async function PlansPage() {
                 ? `${monthlyLimit} memoriais/mês`
                 : "Não definido"
             const priceLabel = priceCents !== null
-              ? key === "free" && priceCents === 0 ? "Grátis" : `${formatCurrency(priceCents)}/mês`
+              ? normalizedKey === "free" && priceCents === 0 ? "Grátis" : `${formatCurrency(priceCents)}/mês`
               : price !== null
-                ? key === "free" && price === 0 ? "Grátis" : `${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price)}/mês`
+                ? normalizedKey === "free" && price === 0 ? "Grátis" : `${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price)}/mês`
                 : "Preço não definido"
 
             return (
               <article key={key} className="flex flex-col gap-5 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">{key}</p>
+                  <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">{normalizedKey === "free" ? "Grátis" : normalizedKey === "pro" ? "Pro" : normalizedKey}</p>
                   <h2 className="mt-1 font-display text-xl font-semibold text-zinc-100">{name}</h2>
                 </div>
                 <dl className="grid gap-4 border-t border-zinc-800 pt-4 sm:grid-cols-2">

@@ -26,3 +26,18 @@ export async function ensureProfile(userId: string) {
 
   if (upsertError) throw new Error("Não foi possível criar o perfil da conta.")
 }
+
+export async function getMemorialPermissions(userId: string) {
+  const { data: profile, error } = await createAdminClient()
+    .from("profiles")
+    .select("can_create_memorials,can_delete_memorials")
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (error) throw new Error("Não foi possível verificar as permissões da conta.")
+
+  return {
+    canCreateMemorials: profile?.can_create_memorials ?? true,
+    canDeleteMemorials: profile?.can_delete_memorials ?? true,
+  }
+}

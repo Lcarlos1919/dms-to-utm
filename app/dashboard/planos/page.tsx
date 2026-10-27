@@ -7,8 +7,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/config"
 import { getUsageStatus } from "@/lib/usage"
 
 export const metadata: Metadata = {
-  title: "Planos — TopoCAD",
-  description: "Compare os planos Grátis e Pro do TopoCAD.",
+  title: "Planos — Vertix",
+  description: "Compare os planos Grátis e Pro do Vertix.",
 }
 
 export default async function DashboardPlanosPage() {

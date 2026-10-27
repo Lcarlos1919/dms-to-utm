@@ -26,7 +26,11 @@ export default async function AdminSubscriptionsPage() {
         rows={(data ?? []).map((subscription) => [
           subscription.provider,
           subscription.status,
-          subscription.plan,
+          subscription.plan.toLowerCase() === "pro" || subscription.plan.toLowerCase() === "premium"
+            ? "Pro"
+            : subscription.plan.toLowerCase() === "free"
+              ? "Grátis"
+              : subscription.plan,
           subscription.amount_cents == null ? "—" : `R$ ${(subscription.amount_cents / 100).toFixed(2)}`,
           subscription.current_period_end ? new Date(subscription.current_period_end).toLocaleDateString("pt-BR") : "—",
         ])}

@@ -22,6 +22,7 @@ export const ADMIN_PERMISSIONS = {
   staffManage: "org:staff:manage",
   billingRead: "org:billing:read",
   usageRead: "org:usage:read",
+  usageManage: "org:usage:manage",
 } as const
 
 export type StaffContext = {
@@ -38,8 +39,16 @@ const ROLE_PERMISSIONS: Record<StaffRole, readonly string[]> = {
     ADMIN_PERMISSIONS.usersManage,
     ADMIN_PERMISSIONS.projectsRead,
     ADMIN_PERMISSIONS.projectsManage,
+    ADMIN_PERMISSIONS.projectsDelete,
   ],
-  "org:finance": [ADMIN_PERMISSIONS.billingRead, ADMIN_PERMISSIONS.usageRead],
+  "org:finance": [
+    ADMIN_PERMISSIONS.usersRead,
+    ADMIN_PERMISSIONS.plansRead,
+    ADMIN_PERMISSIONS.plansManage,
+    ADMIN_PERMISSIONS.billingRead,
+    ADMIN_PERMISSIONS.usageRead,
+    ADMIN_PERMISSIONS.usageManage,
+  ],
   "org:viewer": [
     ADMIN_PERMISSIONS.usersRead,
     ADMIN_PERMISSIONS.projectsRead,
@@ -98,18 +107,22 @@ export type StaffApiAuthorization =
   | { ok: true; context: StaffContext }
   | { ok: false; response: Response }
 
-export async function requireStaffApiPermission(permission: string): Promise<StaffApiAuthorization> {
+export async function requireStaffApiPermissions(permissions: string[]): Promise<StaffApiAuthorization> {
   const { userId } = await auth()
   if (!userId) {
     return { ok: false, response: Response.json({ error: "Não autenticado" }, { status: 401 }) }
   }
 
   const context = await getStaffContextForUser(userId)
-  if (!context || !context.permissions.includes(permission)) {
+  if (!context || permissions.some((permission) => !context.permissions.includes(permission))) {
     return { ok: false, response: Response.json({ error: "Permissão insuficiente" }, { status: 403 }) }
   }
 
   return { ok: true, context }
+}
+
+export async function requireStaffApiPermission(permission: string): Promise<StaffApiAuthorization> {
+  return requireStaffApiPermissions([permission])
 }
 
 export async function requirePermission(permission: string): Promise<StaffContext> {

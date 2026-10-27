@@ -16,7 +16,11 @@ export function UsageCard({ usage }: { usage: UsageStatus }) {
             {isPro ? "Pro" : "Grátis"}
           </span>
         </div>
-        {isPro ? (
+        {!usage.canCreateMemorials ? (
+          <p role="status" className="text-sm text-zinc-400">
+            A criação de memoriais está bloqueada para esta conta. Contate o suporte para solicitar a liberação.
+          </p>
+        ) : isPro ? (
           <p className="text-zinc-100">
             <span className="font-display text-2xl font-semibold">{usage.used}</span> memoriais processados · ilimitado
           </p>
