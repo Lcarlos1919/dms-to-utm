@@ -16,6 +16,11 @@ const manrope = Manrope({
 const description =
   "Envie o memorial descritivo, converta DMS para UTM automaticamente, confira o polígono e exporte planilha e DXF para o AutoCAD. Sem retrabalho manual."
 
+const clerkLocalization = {
+  signIn: { start: { title: "Entrar no Vertix" } },
+  signUp: { start: { title: "Criar conta no Vertix" } },
+}
+
 export const metadata: Metadata = {
   title: "Vertix — Memorial descritivo em PDF para DXF",
   description,
@@ -74,13 +79,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${manrope.variable} font-sans antialiased bg-zinc-950 text-zinc-100`}>
-        <ClerkProvider
-          publishableKey={clerkPublishableKey}
-          localization={{
-            signIn: { start: { title: "Entrar no Vertix" } },
-            signUp: { start: { title: "Criar conta no Vertix" } },
-          }}
-        >
+        <ClerkProvider publishableKey={clerkPublishableKey} localization={clerkLocalization}>
           <AppContent>{children}</AppContent>
         </ClerkProvider>
       </body>
