@@ -6,7 +6,8 @@
     "build": "next build --webpack",
     "dev": "next dev",
     "lint": "eslint .",
-    "start": "next start"
+    "start": "next start",
+    "test:kml": "node --experimental-strip-types --test lib/export/kml.test.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.10",

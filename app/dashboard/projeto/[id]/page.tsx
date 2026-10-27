@@ -31,7 +31,7 @@ export default async function ProjetoPage({ params }: { params: Promise<{ id: st
   const supabase = createAdminClient()
   const { data: project, error: projectError } = await supabase
     .from("projects")
-    .select("id,name,status,utm_zone,datum,error_message,created_at,updated_at,is_closed,closure_error_m")
+    .select("id,name,status,utm_zone,utm_hemisphere,datum,error_message,created_at,updated_at,is_closed,closure_error_m")
     .eq("id", id)
     .eq("user_id", userId)
     .maybeSingle()
@@ -106,6 +106,7 @@ export default async function ProjetoPage({ params }: { params: Promise<{ id: st
         projectId={project.id}
         initialVertices={vertices}
         initialZone={project.utm_zone}
+        initialHemisphere={project.utm_hemisphere}
         initialDatum={project.datum}
         initialClosed={project.is_closed ?? null}
         initialClosureErrorM={project.closure_error_m === null ? null : Number(project.closure_error_m)}

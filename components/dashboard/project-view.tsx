@@ -7,6 +7,7 @@ import { saveProjectVertices } from "@/app/dashboard/novo/actions"
 import { DashboardCard } from "@/components/dashboard/dashboard-card"
 import { ExportButton } from "@/components/dashboard/export-button"
 import { displayDatum } from "@/lib/project-status"
+import { resolveKmlCrs } from "@/lib/export/kml-availability"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { recalcularGeometria, type Vertice } from "@/lib/topocad"
@@ -31,12 +32,18 @@ function computeMetrics(vertices: Vertex[]) {
   return vertices.length < 3 ? null : recalcularGeometria(vertices).geometria
 }
 
-function projectCrs(utmZone: string | null) {
+function projectCrs(utmZone: string | null, utmHemisphere: string | null) {
   const match = utmZone?.trim().match(/^(\d{1,2})\s*([NS])?$/i)
   const zone = match ? Number(match[1]) : Number.NaN
   if (!Number.isInteger(zone) || zone < 1 || zone > 60) return null
 
-  const hemisphere = (match?.[2]?.toUpperCase() as "S" | "N" | undefined) ?? "S"
+  const explicitHemisphere = utmHemisphere?.trim().toUpperCase()
+  if (explicitHemisphere && explicitHemisphere !== "S" && explicitHemisphere !== "N") return null
+  const zoneHemisphere = match?.[2]?.toUpperCase() as "S" | "N" | undefined
+  if (explicitHemisphere && zoneHemisphere && explicitHemisphere !== zoneHemisphere) return null
+  const hemisphere = (explicitHemisphere as "S" | "N" | undefined) ?? zoneHemisphere
+  if (hemisphere !== "S" && hemisphere !== "N") return null
+
   return {
     hemisphere,
     epsg: hemisphere === "S" ? 31960 + zone : 31954 + zone,
@@ -47,6 +54,7 @@ export function ProjectView({
   projectId,
   initialVertices,
   initialZone,
+  initialHemisphere,
   initialDatum,
   initialClosed = null,
   initialClosureErrorM = null,
@@ -55,6 +63,7 @@ export function ProjectView({
   projectId: string
   initialVertices: Vertex[]
   initialZone: string | null
+  initialHemisphere: string | null
   initialDatum: string | null
   initialClosed?: boolean | null
   initialClosureErrorM?: number | null
@@ -63,7 +72,11 @@ export function ProjectView({
   const [vertices, setVertices] = useState(initialVertices)
   const [exportError, setExportError] = useState<string | null>(null)
   const datum = displayDatum(initialDatum)
-  const crs = useMemo(() => projectCrs(initialZone), [initialZone])
+  const crs = useMemo(() => projectCrs(initialZone, initialHemisphere), [initialZone, initialHemisphere])
+  const kmlCrs = useMemo(
+    () => resolveKmlCrs(initialDatum, initialZone, initialHemisphere),
+    [initialDatum, initialZone, initialHemisphere],
+  )
   const [message, setMessage] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const metrics = useMemo(() => computeMetrics(vertices), [vertices])
@@ -156,6 +169,13 @@ export function ProjectView({
         <div className="flex flex-wrap items-center gap-2">
           <ExportButton projectId={projectId} format="xlsx" disabled={!canExport} onError={setExportError} />
           <ExportButton projectId={projectId} format="dxf" disabled={!canExport} onError={setExportError} />
+          <ExportButton
+            projectId={projectId}
+            format="kml"
+            disabled={!canExport || !kmlCrs.ok}
+            disabledReason={canExport && !kmlCrs.ok ? kmlCrs.message : undefined}
+            onError={setExportError}
+          />
         </div>
       </div>
       {exportError && (
