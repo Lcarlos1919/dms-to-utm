@@ -20,6 +20,7 @@ type AdminProjectRow = {
   error_code: string | null
   error_message: string | null
   created_at: string
+  memorial_type?: string | null
 }
 
 const projectStatuses: ProjectStatus[] = ["draft", "processing", "ready", "error"]
@@ -64,20 +65,40 @@ export default async function AdminProjectsPage({ searchParams }: { searchParams
     }
   }
 
-  let query = supabase
-    .from("projects")
-    .select("id,user_id,name,status,area_m2,error_code,error_message,created_at")
-    .order("created_at", { ascending: false })
-    .limit(100)
+  const buildProjectsQuery = () => {
+    let query = supabase
+      .from("projects")
+      .select("id,user_id,name,status,area_m2,error_code,error_message,created_at,memorial_type")
+      .order("created_at", { ascending: false })
+      .limit(100)
 
-  if (status !== "all") query = query.eq("status", status)
-  if (userIds?.length) query = query.in("user_id", userIds)
+    if (status !== "all") query = query.eq("status", status)
+    if (userIds?.length) query = query.in("user_id", userIds)
+    return query
+  }
+  const buildLegacyProjectsQuery = () => {
+    let query = supabase
+      .from("projects")
+      .select("id,user_id,name,status,area_m2,error_code,error_message,created_at")
+      .order("created_at", { ascending: false })
+      .limit(100)
+
+    if (status !== "all") query = query.eq("status", status)
+    if (userIds?.length) query = query.in("user_id", userIds)
+    return query
+  }
 
   let rows: AdminProjectRow[] = []
   if (userIds?.length !== 0) {
-    const { data, error } = await query
-    if (error) throw new Error("Falha ao carregar projetos.")
-    rows = (data ?? []) as AdminProjectRow[]
+    const result = await buildProjectsQuery()
+    if (result.error?.message.toLowerCase().includes("memorial_type")) {
+      const legacyResult = await buildLegacyProjectsQuery()
+      if (legacyResult.error) throw new Error("Falha ao carregar projetos.")
+      rows = (legacyResult.data ?? []).map((project) => ({ ...project, memorial_type: "coordenadas" })) as AdminProjectRow[]
+    } else {
+      if (result.error) throw new Error("Falha ao carregar projetos.")
+      rows = (result.data ?? []).map((project) => ({ ...project, memorial_type: project.memorial_type ?? "coordenadas" })) as AdminProjectRow[]
+    }
   }
   const users = await resolveAdminUserDirectory(rows.map((project) => project.user_id))
   const canManage = access.permissions.includes(ADMIN_PERMISSIONS.projectsManage)
@@ -109,10 +130,10 @@ export default async function AdminProjectsPage({ searchParams }: { searchParams
       </form>
 
       <div className="overflow-x-auto rounded-xl border border-zinc-800">
-        <table className="w-full min-w-[1150px] text-left text-sm">
+        <table className="w-full min-w-[1280px] text-left text-sm">
           <caption className="sr-only">Projetos enviados à plataforma</caption>
           <thead className="border-b border-zinc-800 text-zinc-500">
-            <tr>{["Projeto", "Usuário", "Status", "Área", "Erro", "Criado em", ...(showActions ? ["Ações"] : [])].map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr>
+            <tr>{["Projeto", "Tipo", "Usuário", "Status", "Área", "Erro", "Criado em", ...(showActions ? ["Ações"] : [])].map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr>
           </thead>
           <tbody>
             {rows.map((project) => {
@@ -123,8 +144,12 @@ export default async function AdminProjectsPage({ searchParams }: { searchParams
               return (
                 <tr key={project.id} className="border-b border-zinc-800/70 last:border-0">
                   <td className="px-4 py-4 text-zinc-200">
-                    <Link href={`/admin/projetos/${project.id}`} className="font-medium hover:text-white hover:underline">{project.name}</Link>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/admin/projetos/${project.id}`} className="font-medium hover:text-white hover:underline">{project.name}</Link>
+                      {project.memorial_type === "azimute" && <Badge variant="outline" className="shrink-0">Azimute</Badge>}
+                    </div>
                   </td>
+                  <td className="px-4 py-4 text-zinc-400">{project.memorial_type === "azimute" ? "Azimute" : "Coordenadas"}</td>
                   <td className="px-4 py-4">
                     <p className="text-zinc-200">{identity?.fullName ?? "Sem nome"}</p>
                     <p className="text-xs text-zinc-500">{identity?.email ?? "E-mail indisponível"}</p>
@@ -151,7 +176,7 @@ export default async function AdminProjectsPage({ searchParams }: { searchParams
                 </tr>
               )
             })}
-            {rows.length === 0 && <tr><td colSpan={showActions ? 7 : 6} className="px-4 py-10 text-center text-zinc-500">Nenhum projeto encontrado.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={showActions ? 8 : 7} className="px-4 py-10 text-center text-zinc-500">Nenhum projeto encontrado.</td></tr>}
           </tbody>
         </table>
       </div>

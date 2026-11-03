@@ -15,12 +15,25 @@ export class ProjectDeletionPermissionError extends Error {
 /** Remove os arquivos do Storage e, em seguida, os dados do projeto pertencente ao usuário. */
 async function removerProjetoCompleto(projectId: string, userId: string) {
   const supabase = createAdminClient()
-  const { data: project, error: projectError } = await supabase
+  const projectResult = await supabase
     .from("projects")
-    .select("id,source_pdf_path")
+    .select("id,source_pdf_path,planta_path")
     .eq("id", projectId)
     .eq("user_id", userId)
     .maybeSingle()
+  let project = projectResult.data as { id: string; source_pdf_path: string | null; planta_path?: string | null } | null
+  let projectError = projectResult.error
+
+  if (projectError?.message.toLowerCase().includes("planta_path")) {
+    const legacyProjectResult = await supabase
+      .from("projects")
+      .select("id,source_pdf_path")
+      .eq("id", projectId)
+      .eq("user_id", userId)
+      .maybeSingle()
+    project = legacyProjectResult.data as typeof project
+    projectError = legacyProjectResult.error
+  }
 
   if (projectError) throw new Error("Não foi possível localizar o projeto.")
   if (!project) return { ok: false as const, error: "Projeto não encontrado." }
@@ -34,6 +47,7 @@ async function removerProjetoCompleto(projectId: string, userId: string) {
 
   const storagePaths = new Set<string>()
   if (project.source_pdf_path) storagePaths.add(project.source_pdf_path)
+  if (project.planta_path) storagePaths.add(project.planta_path)
   for (const file of projectFiles ?? []) {
     if (file.storage_path) storagePaths.add(file.storage_path)
   }
