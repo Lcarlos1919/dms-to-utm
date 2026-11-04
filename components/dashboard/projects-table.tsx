@@ -6,6 +6,7 @@ import { useTransition, type MouseEvent } from "react"
 import { FolderOpen, Trash2 } from "lucide-react"
 import { excluirProjeto } from "@/app/dashboard/novo/actions"
 import { DashboardCard } from "@/components/dashboard/dashboard-card"
+import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatArea, formatDate, statusLabels, type ProjectStatus } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -16,6 +17,7 @@ export type ProjectRow = {
   status: ProjectStatus
   area_m2: number | null
   created_at: string
+  memorial_type?: string | null
 }
 
 const projectGrid = "sm:grid-cols-[minmax(0,2fr)_minmax(110px,1fr)_minmax(110px,1fr)_minmax(130px,1fr)]"
@@ -104,6 +106,7 @@ export function ProjectsTable({ projects, canDeleteMemorials = false }: { projec
                     <span className="truncate font-medium text-zinc-100 transition-colors group-hover:underline">
                       {project.name}
                     </span>
+                    {project.memorial_type === "azimute" && <Badge variant="outline" className="shrink-0">Azimute</Badge>}
                     <DeleteProjectButton
                       projectId={project.id}
                       projectName={project.name}

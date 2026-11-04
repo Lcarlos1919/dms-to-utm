@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { requireUser } from "@/lib/auth"
 import { isSupabaseConfigured } from "@/lib/supabase/config"
 import { getUsageStatus } from "@/lib/usage"
+import { canUseFeature } from "@/lib/features"
 import { UploadDropzone } from "@/components/dashboard/upload-dropzone"
 import { SetupNotice } from "@/components/setup-notice"
 
@@ -21,7 +22,10 @@ export default async function NovoProjetoPage() {
     )
   }
 
-  const usage = await getUsageStatus(userId)
+  const [usage, canUseAzimute] = await Promise.all([
+    getUsageStatus(userId),
+    canUseFeature(userId, "memorial_azimute"),
+  ])
   if (!usage.canCreateMemorials) {
     return (
       <div className="max-w-2xl rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6">
@@ -35,18 +39,19 @@ export default async function NovoProjetoPage() {
       </div>
     )
   }
-  if (!usage.canCreate) redirect("/dashboard/planos")
+  if (!usage.canCreate && !canUseAzimute) redirect("/dashboard/planos")
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-semibold text-zinc-100">Novo projeto</h1>
-        <p className="text-sm text-zinc-500">
-          Envie o memorial descritivo em PDF.
-          {usage.limit !== null && ` Você usou ${usage.used} de ${usage.limit} memoriais este mês.`}
-        </p>
+        {usage.limit !== null && (
+          <p className="text-sm text-zinc-500">
+            Você usou {usage.used} de {usage.limit} memoriais este mês.
+          </p>
+        )}
       </div>
-      <UploadDropzone />
+      <UploadDropzone canUseAzimute={canUseAzimute} canCreateCoordinates={usage.canCreate} />
     </div>
   )
 }

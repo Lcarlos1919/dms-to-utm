@@ -15,8 +15,8 @@ import {
   ProjectDeletionPermissionError,
 } from "@/lib/projects/delete-project"
 import { z } from "zod"
+import { sanitizePdfFileName, validatePdfFile } from "@/lib/pdf-validation"
 
-const MAX_SIZE = 10 * 1024 * 1024
 const projectInput = z.object({ name: z.string().trim().min(1).max(120) })
 
 type CreateProjectResult =
@@ -28,36 +28,48 @@ type CreateProjectInput = FormData | { name: string; fileName: string }
 export async function createProject(input: CreateProjectInput): Promise<CreateProjectResult> {
   const userId = await requireUser()
   const isFormData = input instanceof FormData
-  const parsed = projectInput.safeParse({ name: isFormData ? input.get("name") : input.name })
-  const file = isFormData ? input.get("file") : null
-  if (!parsed.success) return { ok: false, error: "Informe um nome para o projeto." }
-  if (isFormData && !(file instanceof File)) return { ok: false, error: "Selecione um arquivo PDF." }
-  const fileName = isFormData && file instanceof File ? file.name : (input as { name: string; fileName: string }).fileName
-  if (!fileName.toLowerCase().endsWith(".pdf")) return { ok: false, error: "O arquivo precisa ser um PDF válido." }
-  if (isFormData && file instanceof File) {
-    if (file.type !== "application/pdf" || file.size > MAX_SIZE) return { ok: false, error: "O arquivo precisa ser um PDF válido de até 10 MB." }
-    const magic = new Uint8Array(await file.slice(0, 4).arrayBuffer())
-    if (String.fromCharCode(...magic) !== "%PDF") return { ok: false, error: "O conteúdo do arquivo não é um PDF válido." }
+  const rawMemorialType = isFormData ? input.get("memorial_type") : null
+  const parsedMemorialType = z.enum(["coordenadas", "azimute"]).safeParse(rawMemorialType ?? "coordenadas")
+  if (!parsedMemorialType.success) return { ok: false, error: "Tipo de memorial inválido." }
+  if (parsedMemorialType.data !== "coordenadas") {
+    return { ok: false, error: "Use o envio específico para memoriais por azimute." }
   }
+
+  const parsed = projectInput.safeParse({ name: isFormData ? input.get("name") : input.name })
+  if (!parsed.success) return { ok: false, error: "Informe um nome para o projeto." }
+
+  let file: File | null = null
+  let fileName: string
+  if (isFormData) {
+    const validation = await validatePdfFile(input.get("file"))
+    if (!validation.ok) return { ok: false, error: validation.error }
+    file = validation.file
+    fileName = validation.sanitizedFileName
+  } else {
+    const sanitizedFileName = sanitizePdfFileName((input as { name: string; fileName: string }).fileName)
+    if (!sanitizedFileName) return { ok: false, error: "O arquivo precisa ser um PDF válido." }
+    fileName = sanitizedFileName
+  }
+
   const usage = await getUsageStatus(userId)
   if (!usage.canCreateMemorials) return { ok: false, error: "A criação de memoriais está bloqueada para esta conta." }
   if (!usage.canCreate) return { ok: false, error: "Você atingiu o limite do plano Grátis neste mês.", limitReached: true }
   const supabase = createAdminClient()
   const projectId = crypto.randomUUID()
   const storagePath = `${userId}/${projectId}/arquivo.pdf`
-  if (isFormData && file instanceof File) {
+  if (file) {
     const { error } = await supabase.storage.from("memoriais").upload(storagePath, file, { contentType: "application/pdf", upsert: false })
     if (error) return { ok: false, error: "Não foi possível enviar o PDF. Tente novamente." }
   }
   const { error: insertError } = await supabase.from("projects").insert({ id: projectId, user_id: userId, name: parsed.data.name, status: "draft", source_pdf_path: storagePath, original_filename: fileName })
   if (insertError) {
-    if (isFormData) {
+    if (file) {
       const { error: storageCleanupError } = await supabase.storage.from("memoriais").remove([storagePath])
       if (storageCleanupError) return { ok: false, error: "Não foi possível criar o projeto nem limpar o arquivo enviado." }
     }
     return { ok: false, error: "Não foi possível criar o projeto. Tente novamente." }
   }
-  const { error: fileRecordError } = await supabase.from("project_files").insert({ project_id: projectId, kind: "memorial_pdf", storage_path: storagePath, original_filename: fileName, mime_type: "application/pdf", size_bytes: isFormData && file instanceof File ? file.size : null })
+  const { error: fileRecordError } = await supabase.from("project_files").insert({ project_id: projectId, kind: "memorial_pdf", storage_path: storagePath, original_filename: fileName, mime_type: "application/pdf", size_bytes: file?.size ?? null })
   if (fileRecordError) {
     try {
       const cleanup = await limparProjetoAposFalhaDeCriacao(projectId, userId)

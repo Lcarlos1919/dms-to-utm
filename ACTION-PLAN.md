@@ -1,97 +1,82 @@
 # Linha do tempo e plano de ação
 
+**Atualizado em:** 2026-10-29
+
+**Base revisada:** `2bedd40` — merge do PR #9, com a exportação KML.
+
 ## Objetivo
 
-Dar continuidade ao TopoCAD com o menor risco possível, mantendo o fluxo principal funcional e evitando retrabalho entre agentes.
+Dar continuidade ao Vertix e ao motor TopoCAD com mudanças pequenas, rastreáveis e compatíveis com o fluxo geoespacial. Separar o que foi validado no código do que ainda depende de sessão autenticada ou configuração no Supabase/Vercel.
+
+## Linha do tempo confirmada
+
+| Data | Marco | Evidência no Git |
+| --- | --- | --- |
+| 2026-10-27 | Refinamento da identidade de autenticação do Vertix | `78a657a` — `Refine Vertix auth branding` |
+| 2026-10-27 | Permissões para exclusão de projetos | `d4ae616` — `Enforce project deletion permissions`; integrado pelo PR #8 |
+| 2026-10-27 | Exportação KML no fluxo do projeto | `f5e026c` — `Add KML export support`; merge `2bedd40`, PR #9 |
+| 2026-10-29 | Validação local da entrega KML | TypeScript, build, 8 testes KML, parsing XML e `git diff --check` passaram; o navegador confirmou `/sign-in`, mas os fluxos pós-login seguem pendentes |
+
+Datas futuras não são estimadas aqui; a sequência abaixo indica ordem, não prazo.
+
+## Estado atual por frente
+
+- **Fundação:** `pnpm exec tsc --noEmit` e `pnpm run build` passaram na última validação registrada. A aplicação das migrações e o estado remoto de RLS/Storage não foram confirmados por esse build.
+- **Motor e exportação:** KML 2.2 foi integrado; converte UTM para WGS84, fecha o polígono, inclui placemarks de vértices e `ExtendedData`, escapa texto XML e rejeita SAD69/CRS inválido/coordenadas fora do Brasil.
+- **Uso e plano:** `lib/usage.ts` aplica limite gratuito mensal configurável (padrão 3), créditos bônus e uso ilimitado para `pro`. A contagem é de processamento de memoriais, não de downloads. Cobrança real não está conectada.
+- **Dados KML:** datum, fuso e hemisfério já estão no schema do projeto. Proprietário e município não são armazenados; esses valores são exportados vazios até existir uma decisão de captura/persistência.
+- **Administração:** permissões e auditoria estão no código. Validar a configuração SQL e os fluxos autenticados no ambiente de destino continua pendente.
+
+## Plano de ação
+
+### 1. Confirmar o ambiente de dados e segurança
+
+- Revisar a ordem dos scripts `supabase/001_schema.sql`, `002_admin-security.sql`, `003_staff-rbac.sql`, `004_drop_legacy_admin.sql` e `005_vertices_codigo_repetido.sql`.
+- Em ambiente autorizado, confirmar quais scripts já foram aplicados e executar `supabase/verify.sql`.
+- Conferir RLS, Storage privado, escopo por `user_id`, webhook Clerk e permissões de staff.
+- Não executar migrações no ambiente de produção sem revisão e aprovação explícita.
+
+### 2. Rodar smoke test autenticado
+
+- Usar uma conta de teste autorizada; verificar sign-in, sign-out, sessão expirada e redirects.
+- Criar e processar PDF de teste; conferir estados do projeto, edição e geometria.
+- Baixar DXF, XLSX e KML; conferir KML em um consumidor geográfico.
+- Confirmar bloqueios KML para SAD69, datum/fuso ausentes ou inconsistentes e erro de coordenadas fora dos limites.
+- Repetir em desktop e viewport móvel.
+
+### 3. Completar cobertura geoespacial e metadados
+
+- Construir fixtures de parser com DMS, Unicode, quebras de linha, datum, zona, vértices inválidos, fechamento, área e perímetro.
+- Testar idempotência de reprocessamento e as rotas de exportação.
+- Decidir se proprietário e município serão digitados ou extraídos do memorial; só então propor persistência/schema.
+
+### 4. Preparar administração e produção
+
+- Testar staff autorizado/não autorizado, auditoria, acesso direto, sessão expirada e ações destrutivas.
+- Definir provedor/preços antes de implementar cobrança real.
+- Fazer Preview, smoke test, revisão de logs e rollback antes de qualquer promoção para Production.
+
+## Validações registradas
+
+- [x] `pnpm exec tsc --noEmit` — passou em 2026-10-29.
+- [x] `pnpm run test:kml` — 8 casos passaram em 2026-10-29.
+- [x] `pnpm run build` — passou em 2026-10-29.
+- [x] Parsing XML do KML gerado e `git diff --check` — passaram em 2026-10-29.
+- [ ] UI autenticada no navegador — não concluída; a sessão de validação redirecionou para `/sign-in`.
+- [ ] Migrações/RLS/Storage confirmados no Supabase de destino.
+- [ ] Fluxo completo validado com memorial real anonimizado e ferramentas consumidoras.
 
 ## Fase 0 — entrada de qualquer novo agente
 
 1. Ler `README.md`, `ROADMAP.md`, este arquivo e `PROJECT-CONTINUITY-SKILL.md`.
-2. Conferir branch, status Git, `package.json`, `next.config.mjs`, `proxy.ts` e variáveis sem imprimir valores.
+2. Conferir branch, status Git, `package.json`, `next.config.mjs`, `proxy.ts` e nomes de variáveis sem imprimir valores.
 3. Identificar se a tarefa é UI, domínio geoespacial, autenticação, banco, webhook ou administração.
-4. Ler os chamadores e consumidores do código antes de editar.
+4. Rastrear chamadores, dados e consumidores antes de editar.
 5. Registrar hipótese, arquivos afetados, risco e validação prevista.
-
-## Fase 1 — fundação técnica
-
-**Status:** concluída a primeira rodada de hardening de autenticação administrativa e verificação SQL; manter a validação de ambiente e o build como pendências operacionais.
-
-**Entregáveis:** build verde, tipos coerentes, SQL aplicado, ambientes documentados.
-
-- Corrigir os tipos compartilhados do motor TopoCAD.
-- Validar `supabase/001_schema.sql` e `supabase/admin-security.sql` em ambiente não produtivo.
-- Confirmar `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SIGNING_SECRET`, `SUPABASE_URL`, chave service role e segredos admin.
-- Confirmar que nenhum segredo aparece em logs, commits ou respostas HTTP.
-- Criar checklist de rollback para SQL e deploy.
-
-**Saída:** `pnpm exec tsc --noEmit`, lint e build sem falhas novas.
-
-## Fase 2 — motor TopoCAD
-
-**Entregáveis:** parser confiável e resultados geoespaciais auditáveis.
-
-- Executar fixtures em `lib/topocad/__fixtures__`.
-- Testar DMS, Unicode, quebras de linha, datum, zona UTM, fechamento e vértices inválidos.
-- Garantir que erros possuem código estável e mensagem útil.
-- Garantir que reprocessar o mesmo projeto não duplica vértices, jobs ou arquivos.
-- Validar área, perímetro, easting/northing e exportações com amostras conhecidas.
-
-## Fase 3 — fluxo do usuário
-
-**Entregáveis:** criar, processar, editar, visualizar e exportar um projeto.
-
-- Testar Clerk sign-in/sign-up e redirecionamento.
-- Criar projeto com PDF válido, rejeitar arquivo inválido e respeitar limite.
-- Acompanhar estados `draft`, `processing`, `ready` e `error`.
-- Editar vértices e recalcular geometria.
-- Baixar cada formato de exportação.
-- Testar desktop e viewport móvel.
-
-## Fase 4 — perfis, organizações e webhook
-
-**Entregáveis:** perfil sincronizado e webhook operacional.
-
-- Validar `user.created`, `user.updated` e `user.deleted` com assinatura Clerk.
-- Tornar operações idempotentes por `user_id`.
-- Definir explicitamente se organizações Clerk são apenas contexto de acesso ou serão tenant de dados.
-- Não misturar `org_id` com `user_id` sem migração de modelo, RLS e plano de compatibilidade.
-- Testar eventos duplicados, assinatura inválida e payload incompleto.
-
-## Fase 5 — painel admin
-
-**Entregáveis:** acesso controlado, operações auditadas e sem loop de login.
-
-- Exigir sessão Clerk válida, e-mail principal verificado, registro ativo em `admin_users` e sessão admin.
-- Usuário não autorizado deve retornar ao dashboard/login normal, sem 404 enganoso ou loop.
-- Auditar login, alterações de permissão, créditos, projetos e ações destrutivas.
-- Nunca registrar e-mail, token, cookie, senha ou segredo em produção.
-- Testar usuário autorizado, não autorizado, sessão expirada e tentativa de acesso direto.
-
-## Fase 6 — produção
-
-1. Aplicar variáveis nos ambientes corretos.
-2. Executar SQL previamente revisado.
-3. Fazer deploy Preview.
-4. Rodar smoke test autenticado e webhook de teste.
-5. Revisar logs e auditoria.
-6. Promover para Production.
-7. Registrar versão, commit, data, riscos aceitos e plano de rollback.
-
-## Checklist de encerramento
-
-- [ ] Código compilado.
-- [ ] Lint/testes aplicáveis executados.
-- [ ] UI testada no navegador quando aplicável.
-- [ ] Rotas autenticadas testadas.
-- [ ] RLS e escopo de usuário revisados.
-- [ ] Nenhum segredo exposto.
-- [ ] Migrações SQL aplicadas/documentadas.
-- [ ] Git sincronizado com mensagem clara.
-- [ ] ROADMAP atualizado.
 
 ## Registro de decisões
 
-Use este formato no PR/commit ou no final da tarefa:
+Use este formato no PR/commit ou ao concluir uma mudança:
 
 - **Decisão:**
 - **Motivo:**
