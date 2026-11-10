@@ -3,8 +3,9 @@ import type { Metadata, Viewport } from "next"
 import { Manrope } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { ClerkProvider } from "@clerk/nextjs"
-import { ptBR } from "@clerk/localizations"
+import { clerkPublishableKey } from "@/lib/clerk-env"
 import { LenisProvider } from "@/components/providers/lenis-provider"
+import "leaflet/dist/leaflet.css"
 import "./globals.css"
 
 const manrope = Manrope({
@@ -15,13 +16,18 @@ const manrope = Manrope({
 const description =
   "Envie o memorial descritivo, converta DMS para UTM automaticamente, confira o polígono e exporte planilha e DXF para o AutoCAD. Sem retrabalho manual."
 
+const clerkLocalization = {
+  signIn: { start: { title: "Entrar no Vertix" } },
+  signUp: { start: { title: "Criar conta no Vertix" } },
+}
+
 export const metadata: Metadata = {
-  title: "TopoCAD — Memorial descritivo em PDF para DXF",
+  title: "Vertix — Memorial descritivo em PDF para DXF",
   description,
   generator: "v0.app",
-  applicationName: "TopoCAD",
+  applicationName: "Vertix",
   openGraph: {
-    title: "TopoCAD — Memorial descritivo em PDF para DXF",
+    title: "Vertix — Memorial descritivo em PDF para DXF",
     description,
     locale: "pt_BR",
     type: "website",
@@ -50,11 +56,6 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 }
 
-const clerkIsConfigured = Boolean(
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
-    (process.env.CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY_4),
-)
-
 function AppContent({ children }: { children: React.ReactNode }) {
   return (
     <>
@@ -78,29 +79,9 @@ export default function RootLayout({
         />
       </head>
       <body className={`${manrope.variable} font-sans antialiased bg-zinc-950 text-zinc-100`}>
-        {clerkIsConfigured ? (
-          <ClerkProvider
-            localization={ptBR}
-            appearance={{
-              variables: {
-                colorPrimary: "#f4f4f5",
-                colorPrimaryForeground: "#18181b",
-                colorBackground: "#18181b",
-                colorForeground: "#f4f4f5",
-                colorMutedForeground: "#a1a1aa",
-                colorInput: "#27272a",
-                colorInputForeground: "#f4f4f5",
-                colorNeutral: "#f4f4f5",
-                borderRadius: "0.75rem",
-                fontFamily: "var(--font-manrope), sans-serif",
-              },
-            }}
-          >
-            <AppContent>{children}</AppContent>
-          </ClerkProvider>
-        ) : (
+        <ClerkProvider publishableKey={clerkPublishableKey} localization={clerkLocalization}>
           <AppContent>{children}</AppContent>
-        )}
+        </ClerkProvider>
       </body>
     </html>
   )

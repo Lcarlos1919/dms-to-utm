@@ -1,0 +1,12 @@
+MEMORIAL DESCRITIVO (SINTETICO - SEM VALOR LEGAL)
+Imovel: Fazenda Exemplo   Municipio: Municipio Ficticio / RO
+Sistema geodesico: SIRGAS 2000
+Codigo Longitude Latitude Altitude (m) Vante Azimute Distancia (m) Confrontacao
+ABCD-V-0001 -62º40′12,345″ -11º42′5,678″ 250,12 ABCD-V-0002 85º12′ 946,50 Estrada Municipal
+ABCD-V-0002 -62º39′41,200″ -11º42′3,100″ 248,90 ABCD-V-0003 175º26′ 874,10 Lote 12 (confrontante ficticio)
+ABCD-V-0003 -62º39′38,900″ -11º42′31,456″ 252,37 ABCD-V-0004 256º59′ 741,29 Corrego Agua Boa, margem direita, ate o marco seguinte
+ABCD-V-0004 -62º40′2,750″ -11º42′36,890″ 255,01 ABCD-V-0005 320º18′ 581,31 Lote 14 (confrontante ficticio)
+ABCD-V-0005 -62º40′15,010″ -11º42′22,333″ 253,48 ABCD-V-0006 3º27′ 256,52 Estrada Municipal
+ABCD-V-0006 -62º40′14,500″ -11º42′14,000″ 251,66 ABCD-V-0001 14º19′ 263,91 Lote 11 (confrontante ficticio)
+Pagina 1 de 1
+Documento sintetico gerado para testes automatizados

@@ -1,0 +1,2 @@
+export function geometry(points:Array<{easting:number;northing:number}>) { if(points.length<2)return {areaM2:0,perimeterM:0}; let twice=0, perimeter=0; for(let i=0;i<points.length;i++){const a=points[i],b=points[(i+1)%points.length]; twice+=a.easting*b.northing-b.easting*a.northing; perimeter+=Math.hypot(b.easting-a.easting,b.northing-a.northing)} return {areaM2:Math.abs(twice)/2,perimeterM:perimeter} }
+export const hectares=(areaM2:number)=>areaM2/10000

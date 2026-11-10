@@ -1,62 +1,55 @@
-import { Webhook } from "svix"
-import type { UserJSON, DeletedObjectJSON, WebhookEvent } from "@clerk/nextjs/server"
+import { verifyWebhook } from "@clerk/nextjs/webhooks"
+import { NextRequest } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 
-function profileFromUser(user: UserJSON) {
-  const primaryEmail =
-    user.email_addresses.find((email) => email.id === user.primary_email_address_id) ?? user.email_addresses[0]
-  const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ") || null
-  const role = (user.public_metadata as { role?: string } | null)?.role === "admin" ? "admin" : "user"
+export async function POST(request: NextRequest) {
+  let event
 
-  return {
-    user_id: user.id,
-    email: primaryEmail?.email_address ?? null,
-    full_name: fullName,
-    role,
-  }
-}
-
-export async function POST(req: Request) {
-  const secret = process.env.CLERK_WEBHOOK_SIGNING_SECRET
-  if (!secret) {
-    return Response.json({ error: "CLERK_WEBHOOK_SIGNING_SECRET não configurado" }, { status: 500 })
-  }
-
-  const svixId = req.headers.get("svix-id")
-  const svixTimestamp = req.headers.get("svix-timestamp")
-  const svixSignature = req.headers.get("svix-signature")
-  if (!svixId || !svixTimestamp || !svixSignature) {
-    return Response.json({ error: "Cabeçalhos svix ausentes" }, { status: 400 })
-  }
-
-  const payload = await req.text()
-  let event: WebhookEvent
   try {
-    event = new Webhook(secret).verify(payload, {
-      "svix-id": svixId,
-      "svix-timestamp": svixTimestamp,
-      "svix-signature": svixSignature,
-    }) as unknown as WebhookEvent
+    event = await verifyWebhook(request)
   } catch {
-    return Response.json({ error: "Assinatura inválida" }, { status: 400 })
+    return new Response("Verificação do webhook falhou", { status: 400 })
   }
-
-  const supabase = createAdminClient()
 
   if (event.type === "user.created" || event.type === "user.updated") {
-    const { error } = await supabase
+    const { id, email_addresses, first_name, last_name, public_metadata } = event.data
+    const email = email_addresses.find((address) => address.id === event.data.primary_email_address_id)?.email_address ?? email_addresses[0]?.email_address ?? null
+    const fullName = [first_name, last_name].filter(Boolean).join(" ") || null
+    const role = public_metadata && typeof public_metadata === "object" && "role" in public_metadata && public_metadata.role === "admin" ? "admin" : "user"
+    const updatedAt = new Date().toISOString()
+    const supabase = createAdminClient()
+
+    const { error: createError } = await supabase.from("profiles").upsert(
+      {
+        user_id: id,
+        email,
+        full_name: fullName,
+        role,
+        can_create_memorials: true,
+        can_delete_memorials: false,
+        updated_at: updatedAt,
+      },
+      { onConflict: "user_id", ignoreDuplicates: true },
+    )
+
+    if (createError) return new Response("Não foi possível sincronizar o usuário", { status: 500 })
+
+    const { error: updateError } = await supabase
       .from("profiles")
-      .upsert(profileFromUser(event.data as UserJSON), { onConflict: "user_id" })
-    if (error) return Response.json({ error: error.message }, { status: 500 })
+      .update({ email, full_name: fullName, role, updated_at: updatedAt })
+      .eq("user_id", id)
+
+    if (updateError) return new Response("Não foi possível sincronizar o usuário", { status: 500 })
   }
 
   if (event.type === "user.deleted") {
-    const { id } = event.data as DeletedObjectJSON
-    if (id) {
-      const { error } = await supabase.from("profiles").delete().eq("user_id", id)
-      if (error) return Response.json({ error: error.message }, { status: 500 })
-    }
+    const { error } = await createAdminClient().from("profiles").delete().eq("user_id", event.data.id)
+    if (error) return new Response("Não foi possível remover o usuário", { status: 500 })
   }
 
   return Response.json({ received: true })
+}
+
+export async function GET() {
+  return Response.json({ endpoint: "Clerk webhook ativo" })
 }
