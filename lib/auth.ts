@@ -1,23 +1,9 @@
 import "server-only"
 
-process.env.CLERK_SECRET_KEY ??= process.env.CLERK_SECRET_KEY_2
-
-import { auth, currentUser } from "@clerk/nextjs/server"
+import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
-import { NextResponse } from "next/server"
-
-const ADMIN_EMAILS = new Set([
-  "luizcarlosilvasaccoman@gmail.com",
-  "lowprofileperson10@gmail.com",
-  "Rafaelbarantes18@gmail.com",
-].map((email) => email.toLowerCase()))
-
-export async function hasAdminEmail() {
-  const user = await currentUser()
-  return Boolean(
-    user?.emailAddresses.some((email) => ADMIN_EMAILS.has(email.emailAddress.toLowerCase())),
-  )
-}
+import { getStaffContext, isStaffAdmin, requireStaff } from "@/lib/admin-auth"
+import { getStaffAccess } from "@/lib/staff"
 
 export async function requireUser() {
   const { userId } = await auth()
@@ -25,29 +11,21 @@ export async function requireUser() {
   return userId
 }
 
-export async function isAdmin() {
-  const { userId } = await auth()
-  return Boolean(userId && (await hasAdminEmail()))
+export async function hasStaffAccess() {
+  return (await getStaffAccess()).isStaff
 }
 
-/** For admin Server Components: re-checks identity and the server-side email allowlist. */
 export async function requireAdmin() {
-  const { userId } = await auth()
-  if (!userId) redirect("/sign-in")
-  if (!(await hasAdminEmail())) redirect("/dashboard")
-  return userId
+  const context = await requireStaff()
+  if (!isStaffAdmin(context)) redirect("/dashboard")
+  return context.userId
 }
 
-type AdminApiResult = { ok: true; userId: string } | { ok: false; response: NextResponse }
+type AdminApiResult = { ok: true; userId: string } | { ok: false; response: Response }
 
-/** For /api/admin/* handlers: returns a 401/403 response when not allowed. */
 export async function requireAdminApi(): Promise<AdminApiResult> {
-  const { userId } = await auth()
-  if (!userId) {
-    return { ok: false, response: NextResponse.json({ error: "Não autenticado" }, { status: 401 }) }
-  }
-  if (!(await hasAdminEmail())) {
-    return { ok: false, response: NextResponse.json({ error: "Acesso negado" }, { status: 403 }) }
-  }
-  return { ok: true, userId }
+  const context = await getStaffContext()
+  if (!context) return { ok: false, response: Response.json({ error: "Não autorizado" }, { status: 401 }) }
+  if (!isStaffAdmin(context)) return { ok: false, response: Response.json({ error: "Permissão insuficiente" }, { status: 403 }) }
+  return { ok: true, userId: context.userId }
 }

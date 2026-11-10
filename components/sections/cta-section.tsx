@@ -15,7 +15,7 @@ export function CtaSection() {
             <LiquidCtaButton>Testar grátis</LiquidCtaButton>
           </Link>
           <Link
-            href="/planos"
+            href="/#precos"
             className="group flex items-center gap-2 px-6 py-3 text-sm font-medium text-zinc-400 hover:text-zinc-100 transition-colors"
           >
             <span>Ver planos</span>

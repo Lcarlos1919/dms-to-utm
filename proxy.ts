@@ -1,12 +1,29 @@
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
 
-// Rotas públicas não dependem do Clerk. A autenticação é validada no servidor
-// pelas páginas e actions protegidas, evitando que uma configuração ausente do
-// provedor derrube o deployment inteiro com MIDDLEWARE_INVOCATION_FAILED.
-export default function proxy(_request: NextRequest) {
-  return NextResponse.next()
-}
+const isPublicRoute = createRouteMatcher([
+  "/",
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/api/webhooks(.*)",
+])
+const isDashboardRoute = createRouteMatcher(["/dashboard(.*)"])
+const isAdminRoute = createRouteMatcher(["/admin(.*)"])
+
+export default clerkMiddleware(async (auth, request) => {
+  if (isPublicRoute(request)) return
+
+  if (isDashboardRoute(request)) {
+    const { userId } = await auth()
+    if (!userId) return NextResponse.redirect(new URL("/sign-in", request.url))
+    return
+  }
+
+  if (isAdminRoute(request)) {
+    const { userId } = await auth()
+    if (!userId) return NextResponse.redirect(new URL("/sign-in", request.url))
+  }
+})
 
 export const config = {
   matcher: [
