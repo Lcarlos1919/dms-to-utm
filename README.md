@@ -55,3 +55,28 @@ Os scripts SQL ficam em `supabase/`. Revise e aplique alterações somente no am
 - `ROADMAP.md`: estado do produto, prioridades e decisões de escopo.
 - `ACTION-PLAN.md`: marcos confirmados, validações e próximos passos.
 - `PROJECT-CONTINUITY-SKILL.md`: mapa técnico e regras para manutenção.
+
+## Inventário atual de rotas e funções
+
+**Rotas API:**
+
+- `GET /api/health`
+- `GET /api/projetos`, `POST /api/projetos`
+- `GET/PATCH/DELETE /api/projetos/[id]`
+- `POST /api/projetos/[id]/processar`
+- `GET /api/projetos/[id]/exportar?formato=dxf|xlsx|kml`
+- `GET /api/projects/[id]/export/[format]` para PDF e DXF
+- `POST /api/projetos/azimute`
+- `GET /api/admin/users`, `/api/admin/projects`, `/api/admin/logs`, `/api/admin/credits`
+- `POST /api/admin/project-download`
+- `POST /api/webhooks/clerk`
+
+**Funções de domínio principais:**
+
+- TopoCAD: `processarTexto`, `processarPaginas`, `processarVertices`, `recalcularGeometria`, `extrairVertices`, `textoParaNumero`, `dmsParaDecimal`.
+- Geometria/UTM: `areaPlanimetrica`, `perimetroGrade`, `calcularGeometria`, `fusoUtm`, `descobrirEpsgUtm`, `geograficasParaUtm`, `utmParaGeograficas`.
+- Exportação: `gerarDxf`, `gerarXlsx`, `gerarKml`, `criarZip`.
+- Detecção de referência: `detectarParametrosMemorial`, `detectarMetadadosMemorial`, `inferirCrsDoMemorial`, `parametrosArquivoValidos`, `normalizarDatum`.
+- Segurança e operação: `getStaffAccess`, `isStaffRole`, `getUsageStatus`, `incrementUsage`, `audit`, `canUseFeature`.
+
+Este inventário foi revisado em 2026-11-10 contra os Route Handlers e módulos `lib/topocad`, `lib/export`, `lib/usage` e `lib/staff` presentes no branch atual.

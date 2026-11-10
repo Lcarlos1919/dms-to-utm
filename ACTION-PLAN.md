@@ -85,3 +85,16 @@ Use este formato no PR/commit ou ao concluir uma mudança:
 - **Risco:**
 - **Validação:**
 - **Rollback:**
+
+## Inventário operacional atualizado — 2026-11-10
+
+### Rotas existentes
+
+- Projetos: `/api/projetos`, `/api/projetos/[id]`, `/api/projetos/[id]/processar`, `/api/projetos/azimute`.
+- Exportação: `/api/projetos/[id]/exportar` (DXF, XLSX, KML) e `/api/projects/[id]/export/[format]` (PDF/DXF).
+- Administração: `/api/admin/users`, `/api/admin/projects`, `/api/admin/logs`, `/api/admin/credits`, `/api/admin/project-download`.
+- Infraestrutura: `/api/health` e `/api/webhooks/clerk`.
+
+### Funções confirmadas
+
+`gerarDxf`, `gerarXlsx`, `gerarKml`, `processarTexto`, `processarPaginas`, `processarVertices`, `recalcularGeometria`, `extrairVertices`, `calcularGeometria`, `detectarParametrosMemorial`, `getStaffAccess`, `getUsageStatus`, `incrementUsage`, `audit` e `canUseFeature` estão presentes no código atual. Os testes e o smoke test autenticado continuam sendo requisitos de validação funcional, não apenas de existência de arquivos.

@@ -110,3 +110,21 @@ pnpm run dev
 ```
 
 O manifesto também define `pnpm run lint`; confirme que o executor está disponível antes de relatar o resultado. Se um comando não existir ou estiver bloqueado, informe isso e escolha uma alternativa verificável.
+
+## Inventário verificado do branch atual — 2026-11-10
+
+### Route Handlers
+
+`/api/health`, `/api/projetos`, `/api/projetos/[id]`, `/api/projetos/[id]/processar`, `/api/projetos/[id]/exportar`, `/api/projetos/azimute`, `/api/projects/[id]/export/[format]`, `/api/admin/users`, `/api/admin/projects`, `/api/admin/logs`, `/api/admin/credits`, `/api/admin/project-download` e `/api/webhooks/clerk`.
+
+### Módulos e funções de domínio
+
+- `lib/topocad/parser.ts`: `textoParaNumero`, `dmsParaDecimal`, `extrairVertices`.
+- `lib/topocad/motor.ts`: `processarVertices`, `processarTexto`, `processarPaginas`, `recalcularGeometria`.
+- `lib/topocad/geometria.ts`: `areaPlanimetrica`, `perimetroGrade`, `calcularGeometria`.
+- `lib/topocad/utm.ts`: `fusoUtm`, `descobrirEpsgUtm`, `montarCrs`, `geograficasParaUtm`, `utmParaGeograficas`.
+- `lib/topocad/exportar.ts`/`lib/topocad/xlsx.ts`: `gerarDxf`, `gerarXlsx`, `criarZip`.
+- `lib/export/kml.ts`: geração KML com `proj4`, escape XML e validação geográfica.
+- `lib/usage.ts`, `lib/staff.ts`, `lib/audit.ts`: limites, staff e auditoria.
+
+Antes de declarar uma função “funcionando”, executar o check correspondente; a presença no inventário confirma implementação, não validação end-to-end.

@@ -86,3 +86,9 @@ Uma entrega é considerada pronta quando passa os checks aplicáveis, é validad
 Não introduzir outro provedor de autenticação, banco, pagamentos, filas externas ou framework sem registrar a decisão e o impacto.
 
 Consulte `ACTION-PLAN.md` para a linha do tempo confirmada, validações recentes e checklist operacional.
+
+## Inventário de rotas e capacidades — 2026-11-10
+
+As rotas atuais estão concentradas em projetos (`/api/projetos`), exports (`/api/projetos/[id]/exportar` e `/api/projects/[id]/export/[format]`), processamento (`/api/projetos/[id]/processar`), Azimute, administração, health check e webhook Clerk. Os formatos DXF, XLSX e KML possuem geradores no TopoCAD/KML e handlers de download.
+
+As funções centrais verificadas são `processarTexto`, `processarPaginas`, `processarVertices`, `recalcularGeometria`, `extrairVertices`, `areaPlanimetrica`, `perimetroGrade`, `calcularGeometria`, `gerarDxf`, `gerarXlsx`, `gerarKml`, `detectarParametrosMemorial`, `getStaffAccess`, `getUsageStatus`, `incrementUsage`, `audit` e `canUseFeature`. A lista detalhada e os caminhos das rotas estão no `README.md`.
