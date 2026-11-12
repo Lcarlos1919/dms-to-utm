@@ -14,6 +14,7 @@ import { STALE_PROCESSING_MESSAGE, isStaleProcessing, staleProcessingCutoff } fr
 import { linhaParaVertice } from "@/lib/topocad-db/mapeamento"
 import { AzimuteLocalizacao } from "@/components/dashboard/azimute-localizacao"
 import { AzimuteRevisao } from "@/components/dashboard/azimute-revisao"
+import { AzimuteArquivos } from "@/components/dashboard/azimute-arquivos"
 import { AZIMUTE_STATUS, azimuteDadosSchema, type AzimuteStatus } from "@/lib/azimute/tipos"
 
 export const metadata: Metadata = { title: "Projeto — Vertix" }
@@ -96,6 +97,9 @@ export default async function ProjetoPage({ params }: { params: Promise<{ id: st
         />
         {status === "revisado" && dados.success && (
           <AzimuteLocalizacao projectId={project.id} inicial={dados.data.localizacao ?? null} />
+        )}
+        {status === "revisado" && dados.success && (
+          <AzimuteArquivos projectId={project.id} chave={dados.data.localizacao?.localizadoEm ?? "sem-posicao"} />
         )}
       </div>
     )
