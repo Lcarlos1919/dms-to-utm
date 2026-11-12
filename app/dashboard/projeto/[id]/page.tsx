@@ -98,7 +98,7 @@ export default async function ProjetoPage({ params }: { params: Promise<{ id: st
         {status === "revisado" && dados.success && (
           <AzimuteLocalizacao projectId={project.id} inicial={dados.data.localizacao ?? null} />
         )}
-        {status === "revisado" && dados.success && (
+        {(status === "lido" || status === "revisado") && dados.success && (
           <AzimuteArquivos projectId={project.id} chave={dados.data.localizacao?.localizadoEm ?? "sem-posicao"} />
         )}
       </div>

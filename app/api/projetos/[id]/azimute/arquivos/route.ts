@@ -27,7 +27,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!dados.success) return erroApi(422, "DADOS_INVALIDOS", "Os dados do memorial estão inválidos. Leia os documentos de novo.")
 
   const { data: projeto } = await createAdminClient().from("projects").select("name").eq("id", ctx.id).maybeSingle()
-  const arquivos = montarArquivos(dados.data, projeto?.name ?? "vertix")
+  const arquivos = montarArquivos(dados.data, projeto?.name ?? "vertix", ctx.project.azimute_status)
   const headers = { "Cache-Control": "no-store" }
 
   if (formato === "resumo") {

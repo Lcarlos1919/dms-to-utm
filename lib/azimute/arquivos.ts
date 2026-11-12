@@ -36,7 +36,7 @@ const sanitizar = (nome: string) =>
 /** EPSG do SIRGAS 2000 / UTM zona S do fuso = 31960 + fuso (ex.: fuso 20 → 31980). */
 const epsgSirgasSul = (fuso: number) => 31960 + fuso
 
-export function montarArquivos(dados: AzimuteDados, nomeProjeto: string): ArquivosAzimute {
+export function montarArquivos(dados: AzimuteDados, nomeProjeto: string, statusTabela: string = dados.revisadoEm ? "revisado" : "lido"): ArquivosAzimute {
   const pendencias: string[] = []
   const avisos: string[] = []
   const vazio = (): ArquivosAzimute => ({ vertices: [], georreferenciado: false, pendencias, avisos, kml: null, dxf: null, xlsx: null })
@@ -49,6 +49,7 @@ export function montarArquivos(dados: AzimuteDados, nomeProjeto: string): Arquiv
   }
 
   const { fuso, hemisferio, cabecalho, localizacao } = dados
+  if (statusTabela !== "revisado") pendencias.push("Tabela de segmentos ainda não confirmada.")
   const pol = calcularPoligonal(segs)
 
   // 1) Posição: a confirmada pelo usuário, senão a primeira candidata.
