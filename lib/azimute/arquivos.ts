@@ -6,6 +6,7 @@ import { calcularPoligonal } from "@/lib/vertix-core/poligonal"
 import { lonLatParaUtm } from "@/lib/vertix-core/utm"
 import { relatorioPoligonal, conferirCoordenadas, validarSegmentos } from "@/lib/vertix-core/revisao"
 import type { Segmento } from "@/lib/vertix-core/memorial"
+import { corrigirDistancias, textoCorrecao } from "@/lib/vertix-core/correcao"
 import type { AzimuteDados } from "./tipos"
 
 export interface VerticeArquivo {
@@ -41,7 +42,7 @@ export function montarArquivos(dados: AzimuteDados, nomeProjeto: string, statusT
   const avisos: string[] = []
   const vazio = (): ArquivosAzimute => ({ vertices: [], georreferenciado: false, pendencias, avisos, kml: null, dxf: null, xlsx: null })
 
-  const segs: Segmento[] = dados.segmentos.map((s) => ({ ...s }))
+  let segs: Segmento[] = dados.segmentos.map((s) => ({ ...s }))
   const problemas = validarSegmentos(segs)
   if (problemas.length) {
     for (const p of problemas) pendencias.push(`Tabela, linha ${p.linha}: ${p.msg}`)
@@ -49,6 +50,12 @@ export function montarArquivos(dados: AzimuteDados, nomeProjeto: string, statusT
   }
 
   const { fuso, hemisferio, cabecalho, localizacao } = dados
+
+  // Distância que contradiz as coordenadas do memorial: corrige só quando o perímetro declarado confirma.
+  const corr = corrigirDistancias(segs, dados.coordenadas, cabecalho.perimetroM)
+  segs = corr.segs
+  for (const c of corr.correcoes) avisos.push(textoCorrecao(c))
+  for (const x of corr.suspeitas) pendencias.push(x)
   if (statusTabela !== "revisado") pendencias.push("Tabela de segmentos ainda não confirmada.")
   const pol = calcularPoligonal(segs)
 
