@@ -1,5 +1,6 @@
 import type { Aviso, ItemTexto, OpcoesMotor, ResultadoMotor, Geometria, Vertice, VerticeBruto } from "./tipos";
 import { extrairVertices } from "./parser";
+import { verticesDeProsa } from "./prosa";
 import { reconstruirLinhas } from "./texto";
 import { arredondar3, descobrirEpsgUtm, fusoUtm, geograficasParaUtm, montarCrs } from "./utm";
 import { calcularGeometria } from "./geometria";
@@ -161,7 +162,12 @@ export function processarTexto(texto: string, opcoes: OpcoesMotor = {}): Resulta
     return { ok: false, erro: parametros.erro, avisos: parametros.avisos };
   }
 
-  const { vertices, avisos } = extrairVertices(texto);
+  let { vertices, avisos } = extrairVertices(texto);
+  // Sem tabela: tenta o memorial em texto corrido (coordenadas escritas em cada vértice).
+  if (vertices.length === 0) {
+    const prosa = verticesDeProsa(texto);
+    if (prosa.length) vertices = prosa;
+  }
   return processarVertices(
     vertices,
     {
