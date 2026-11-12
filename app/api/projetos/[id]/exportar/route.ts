@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { buildKml } from "@/lib/export/kml"
 import { resolveKmlCrs } from "@/lib/export/kml-availability"
 import { erroApi, identidadeApi, nomeArquivo } from "@/lib/api/projetos"
+import { canUseFeature } from "@/lib/features"
 import { gerarDxf, gerarXlsx } from "@/lib/topocad"
 import { crsDoProjeto, linhaParaVertice } from "@/lib/topocad-db/mapeamento"
 
@@ -15,6 +16,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const formato = new URL(request.url).searchParams.get("formato")
   if (formato !== "xlsx" && formato !== "dxf" && formato !== "kml") {
     return erroApi(400, "FORMATO_INVALIDO", "Use formato=xlsx, formato=dxf ou formato=kml.")
+  }
+
+  if (formato === "kml" && !(await canUseFeature(userId, "export_kml"))) {
+    return erroApi(403, "RECURSO_INDISPONIVEL", "A exportação KML não está disponível para o seu plano.")
   }
 
   const db = createAdminClient()

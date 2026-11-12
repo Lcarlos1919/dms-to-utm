@@ -5,6 +5,7 @@ import { z } from "zod"
 import { ADMIN_PERMISSIONS, requirePermission } from "@/lib/admin-auth"
 import { writeAdminAuditLog } from "@/lib/audit"
 import { createAdminClient } from "@/lib/supabase/server"
+import { FEATURE_KEYS, parseFeatureAccess, type FeatureAccess } from "@/lib/feature-access"
 
 const limitSchema = z.string().trim().regex(/^\d+$/).transform(Number).refine(Number.isSafeInteger)
 
@@ -53,4 +54,40 @@ export async function updateFreeMonthlyLimit(formData: FormData) {
   }
 
   return { ok: true as const, message: "Limite mensal atualizado." }
+}
+
+export async function updateFeatureAccess(formData: FormData) {
+  const access = await requirePermission(ADMIN_PERMISSIONS.settingsManage)
+  const supabase = createAdminClient()
+
+  const { data: current, error: readError } = await supabase.from("app_settings").select("value").eq("key", "feature_access").maybeSingle()
+  if (readError) return { ok: false as const, message: "Não foi possível carregar a configuração atual." }
+
+  const previous = parseFeatureAccess(current?.value)
+  const next = {} as FeatureAccess
+  for (const key of FEATURE_KEYS) {
+    next[key] = { free: formData.get(`${key}.free`) === "on", pro: formData.get(`${key}.pro`) === "on" }
+  }
+
+  const { error: updateError } = await supabase.from("app_settings").upsert(
+    { key: "feature_access", value: next, updated_at: new Date().toISOString() },
+    { onConflict: "key" },
+  )
+  if (updateError) return { ok: false as const, message: "Não foi possível salvar as ferramentas por plano." }
+
+  revalidatePath("/admin/configuracoes")
+  revalidatePath("/dashboard")
+  revalidatePath("/dashboard/novo")
+
+  try {
+    await writeAdminAuditLog({
+      actorId: access.userId,
+      action: "settings.feature_access.updated",
+      metadata: { previousValue: previous, newValue: next },
+    })
+  } catch {
+    return { ok: false as const, message: "As ferramentas foram salvas, mas não foi possível registrar a auditoria." }
+  }
+
+  return { ok: true as const, message: "Ferramentas por plano atualizadas." }
 }
