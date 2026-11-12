@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo } from "react"
-import { CircleMarker, MapContainer, Polygon, Popup, TileLayer, Tooltip, ZoomControl, useMap } from "react-leaflet"
+import { CircleMarker, LayersControl, MapContainer, Polygon, Popup, TileLayer, Tooltip, ZoomControl, useMap } from "react-leaflet"
 import { latLngBounds, type LatLngTuple } from "leaflet"
 import { utmParaGeograficas, type Vertice } from "@/lib/topocad"
 
@@ -19,6 +19,12 @@ type MapPoint = {
 
 const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 const TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+const SATELITE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+const ROTULOS_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+
+/** Link para o mesmo ponto no Google Earth Web (vista 3D de satélite). Não exige chave. */
+const linkGoogleEarth = (lat: number, lon: number) =>
+  `https://earth.google.com/web/@${lat.toFixed(6)},${lon.toFixed(6)},0a,1500d,35y,0h,45t,0r`
 
 function MapBounds({ positions }: { positions: LatLngTuple[] }) {
   const map = useMap()
@@ -93,8 +99,18 @@ export function ProjectMap({ vertices, utmZone, hemisphere, datum }: ProjectMapP
         scrollWheelZoom
         className="h-[420px] w-full bg-zinc-900"
       >
-        <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
         <ZoomControl position="topright" />
+        <LayersControl position="topleft">
+          <LayersControl.BaseLayer checked name="Satélite com rótulos">
+            <TileLayer url={SATELITE_URL} attribution="Imagens &copy; Esri, Maxar, Earthstar Geographics" maxNativeZoom={19} maxZoom={21} />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="Ruas">
+            <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} maxNativeZoom={19} maxZoom={21} />
+          </LayersControl.BaseLayer>
+          <LayersControl.Overlay checked name="Rótulos (ruas, cidades)">
+            <TileLayer url={ROTULOS_URL} maxNativeZoom={19} maxZoom={21} />
+          </LayersControl.Overlay>
+        </LayersControl>
         <MapBounds positions={positions} />
         {points.length >= 3 && (
           <Polygon
@@ -121,6 +137,14 @@ export function ProjectMap({ vertices, utmZone, hemisphere, datum }: ProjectMapP
           </CircleMarker>
         ))}
       </MapContainer>
+      <div className="flex items-center justify-between gap-3 border-t border-zinc-800 px-4 py-2 text-xs text-zinc-400">
+        <span>Imagem de satélite</span>
+        {positions[0] && (
+          <a href={linkGoogleEarth(positions[0][0], positions[0][1])} target="_blank" rel="noreferrer" className="text-zinc-200 underline-offset-4 hover:underline">
+            Abrir no Google Earth
+          </a>
+        )}
+      </div>
       {points.length < vertices.length && (
         <p className="border-t border-zinc-800 px-4 py-2 text-xs text-zinc-400" role="status">
           {vertices.length - points.length} vértice(s) sem coordenadas UTM válidas foram omitidos do mapa.
