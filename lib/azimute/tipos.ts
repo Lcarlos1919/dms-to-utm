@@ -41,6 +41,8 @@ const fonteLote = z.enum(["banco", "geoportal"])
 /** Resultado da busca do lote na base fundiária (D2). Só números e identificação do lote; sem dados de proprietário. */
 export const localizacaoSchema = z.object({
   versao: z.literal(1),
+  /** Posição escolhida pelo usuário no mapa (D3). Só guarda o índice: os vértices vêm sempre das candidatas salvas. */
+  confirmada: z.object({ indice: z.number().int().min(0).max(4), confirmadoEm: z.string() }).nullable().optional(),
   localizadoEm: z.string(),
   estado: z.enum(["encontrado", "nao_encontrado", "sem_fontes"]),
   fonte: fonteLote.nullable(),
