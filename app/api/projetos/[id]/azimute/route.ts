@@ -74,6 +74,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     datum: "SIRGAS 2000",
     segmentos,
     avisosLeitura: atual.success ? atual.data.avisosLeitura : [],
+    ...(atual.success && atual.data.coordenadas ? { coordenadas: atual.data.coordenadas } : {}),
     lidoEm: atual.success ? atual.data.lidoEm : agora,
     revisadoEm: confirmar ? agora : null,
     // a posição calculada vale para a tabela anterior: ao salvar de novo, é preciso localizar outra vez
