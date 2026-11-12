@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { num } from "@/lib/vertix-core/angulos"
 import type { Segmento } from "@/lib/vertix-core/memorial"
-import { conferirIdentificacao, lerAnguloLivre, relatorioPoligonal, textoAzimute, validarSegmentos, type Check } from "@/lib/vertix-core/revisao"
+import { conferirCoordenadas, conferirIdentificacao, lerAnguloLivre, relatorioPoligonal, textoAzimute, validarSegmentos, type Check } from "@/lib/vertix-core/revisao"
 import { FUSO_PADRAO, type AzimuteDados, type AzimuteStatus } from "@/lib/azimute/tipos"
 
 interface Linha {
@@ -30,7 +30,7 @@ const rotulo = "text-xs text-zinc-400"
 let contador = 0
 const novoId = () => `l${Date.now()}-${contador++}`
 
-const fmtNum = (n: number | undefined) => (n === undefined || !Number.isFinite(n) ? "" : n.toLocaleString("pt-BR", { maximumFractionDigits: 4 }))
+const fmtNum = (n: number | undefined) => (n === undefined || !Number.isFinite(n) ? "" : n.toLocaleString("pt-BR", { maximumFractionDigits: 6 }))
 const lerNumero = (t: string) => {
   const s = t.trim()
   if (!s) return undefined
@@ -109,6 +109,8 @@ export function AzimuteRevisao({
     [segmentos, areaDeclarada, perimetroDeclarado, planta],
   )
   const identificacao = useMemo(() => conferirIdentificacao({ lote, gleba }, planta), [lote, gleba, planta])
+  const [coordenadas, setCoordenadas] = useState(initialDados?.coordenadas)
+  const conferenciaCoordenadas = useMemo(() => conferirCoordenadas(segmentos, coordenadas, fuso), [segmentos, coordenadas, fuso])
   const podeConfirmar = problemas.length === 0 && relatorio.calculavel && relatorio.situacao !== "erro" && conferi && ocupado === null
   const valoresValidos = linhas.every((l) => l.azimute !== null && lerNumero(l.distanciaTexto) !== undefined)
 
@@ -126,6 +128,7 @@ export function AzimuteRevisao({
     setPerimetroTexto(fmtNum(dados.cabecalho.perimetroM))
     setFuso(dados.fuso)
     setHemisferio(dados.hemisferio)
+    setCoordenadas(dados.coordenadas)
     setConferi(false)
   }
 
@@ -404,7 +407,7 @@ export function AzimuteRevisao({
               </dl>
             )}
             <ul className="space-y-2">
-              {[...relatorio.checks, ...identificacao].map((c) => (
+              {[...relatorio.checks, ...conferenciaCoordenadas, ...identificacao].map((c) => (
                 <li key={c.id} className="flex items-start gap-2 text-sm">
                   <IconeCheck status={c.status} />
                   <span><span className="font-medium text-zinc-200">{c.rotulo}.</span> <span className="text-zinc-400">{c.detalhe}</span></span>

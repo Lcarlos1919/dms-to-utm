@@ -37,6 +37,7 @@ export const plantaSchema = z.object({
 
 const lonLat = z.tuple([z.number().finite(), z.number().finite()])
 const fonteLote = z.enum(["banco", "geoportal"])
+const fontePosicao = z.enum(["banco", "geoportal", "memorial"])
 
 /** Resultado da busca do lote na base fundiária (D2). Só números e identificação do lote; sem dados de proprietário. */
 export const localizacaoSchema = z.object({
@@ -45,7 +46,7 @@ export const localizacaoSchema = z.object({
   confirmada: z.object({ indice: z.number().int().min(0).max(4), confirmadoEm: z.string() }).nullable().optional(),
   localizadoEm: z.string(),
   estado: z.enum(["encontrado", "nao_encontrado", "sem_fontes"]),
-  fonte: fonteLote.nullable(),
+  fonte: fontePosicao.nullable(),
   motivo: z.string().max(400),
   avisos: z.array(z.string().max(400)).max(30),
   divergenciaM: z.number().nullable(),
@@ -75,7 +76,7 @@ export const localizacaoSchema = z.object({
         azimutesCasados: z.number().int().min(0),
         pontuacao: z.number(),
         pontuacaoFinal: z.number(),
-        confianca: z.enum(["sigef_confirmada", "sigef_divisa", "siglo"]),
+        confianca: z.enum(["sigef_confirmada", "sigef_divisa", "siglo", "coordenadas"]),
         sigef: z.object({
           nivel: z.enum(["confirmada", "divisa", "nenhum"]),
           verticesCasados: z.number().int().min(0),
@@ -100,6 +101,8 @@ export const azimuteDadosSchema = z.object({
   datum: z.literal("SIRGAS 2000"),
   segmentos: z.array(segmentoSchema).max(500),
   avisosLeitura: z.array(z.string().max(300)).max(50),
+  /** Coordenadas geográficas escritas no memorial, por vértice (quando o memorial traz). */
+  coordenadas: z.record(z.string().max(24), z.object({ lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180) })).optional(),
   lidoEm: z.string().nullable(),
   revisadoEm: z.string().nullable(),
   /** Preenchido pelo D2; apagado sempre que a tabela é salva de novo (a posição deixa de valer). */

@@ -21,12 +21,13 @@ const AzimuteMapa = dynamic(() => import("./azimute-mapa").then((m) => m.Azimute
   ),
 })
 
-const rotuloFonte = { banco: "base fundiária (Supabase)", geoportal: "GeoPortal da SEDAM (ao vivo)" } as const
+const rotuloFonte = { banco: "base fundiária (Supabase)", geoportal: "GeoPortal da SEDAM (ao vivo)", memorial: "coordenadas do memorial" } as const
 
 const confiancaInfo: Record<Candidata["confianca"], { rotulo: string; classe: string }> = {
   sigef_confirmada: { rotulo: "Confirmada pelo SIGEF", classe: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" },
   sigef_divisa: { rotulo: "Divisa no SIGEF", classe: "border-sky-500/40 bg-sky-500/10 text-sky-300" },
   siglo: { rotulo: "Só SIGLO (±1–2 m)", classe: "border-zinc-600 bg-zinc-800 text-zinc-300" },
+  coordenadas: { rotulo: "Coordenadas do memorial", classe: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" },
 }
 
 const fmt = (n: number, casas = 1) => n.toLocaleString("pt-BR", { maximumFractionDigits: casas })
@@ -123,32 +124,45 @@ export function AzimuteLocalizacao({ projectId, inicial }: { projectId: string; 
           </div>
         )}
 
-        {loc && loc.estado === "encontrado" && loc.lote && (
+        {loc && loc.estado === "encontrado" && (
           <div className="space-y-5">
-            <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <dt className="text-zinc-500">Lote na base</dt>
-                <dd className="text-zinc-100">
-                  {loc.lote.lote} · gleba {loc.lote.gleba || "—"}
-                </dd>
-                <dd className="text-zinc-400">{loc.lote.nomeGleba}</dd>
-              </div>
-              <div>
-                <dt className="text-zinc-500">Fonte usada</dt>
-                <dd className="text-zinc-100">{loc.fonte ? rotuloFonte[loc.fonte] : "—"}</dd>
-                {loc.lote.baseData && <dd className="text-zinc-400">base de {loc.lote.baseData}</dd>}
-              </div>
-              <div>
-                <dt className="text-zinc-500">Área oficial do lote</dt>
-                <dd className="text-zinc-100">{loc.lote.areaOficialHa != null ? `${fmt(loc.lote.areaOficialHa, 2)} ha` : "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-zinc-500">SIGEF</dt>
-                <dd className="text-zinc-100">
-                  {!loc.sigef.ok ? "indisponível" : loc.sigef.parcelas ? `${loc.sigef.parcelas} parcela(s) perto` : "sem parcela perto"}
-                </dd>
-              </div>
-            </dl>
+            {loc.lote ? (
+              <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <dt className="text-zinc-500">Lote na base</dt>
+                  <dd className="text-zinc-100">
+                    {loc.lote.lote} · gleba {loc.lote.gleba || "—"}
+                  </dd>
+                  <dd className="text-zinc-400">{loc.lote.nomeGleba}</dd>
+                </div>
+                <div>
+                  <dt className="text-zinc-500">Fonte usada</dt>
+                  <dd className="text-zinc-100">{loc.fonte ? rotuloFonte[loc.fonte] : "—"}</dd>
+                  {loc.lote.baseData && <dd className="text-zinc-400">base de {loc.lote.baseData}</dd>}
+                </div>
+                <div>
+                  <dt className="text-zinc-500">Área oficial do lote</dt>
+                  <dd className="text-zinc-100">{loc.lote.areaOficialHa != null ? `${fmt(loc.lote.areaOficialHa, 2)} ha` : "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-zinc-500">SIGEF</dt>
+                  <dd className="text-zinc-100">
+                    {!loc.sigef.ok ? "indisponível" : loc.sigef.parcelas ? `${loc.sigef.parcelas} parcela(s) perto` : "sem parcela perto"}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-zinc-500">Origem da posição</dt>
+                  <dd className="text-zinc-100">Coordenadas escritas no memorial</dd>
+                </div>
+                <div>
+                  <dt className="text-zinc-500">Base fundiária</dt>
+                  <dd className="text-zinc-100">não consultada (o memorial já traz a posição)</dd>
+                </div>
+              </dl>
+            )}
             <p className="text-sm text-zinc-500">{loc.motivo}</p>
 
             {loc.avisos.length > 0 && (
@@ -203,13 +217,12 @@ export function AzimuteLocalizacao({ projectId, inicial }: { projectId: string; 
                           </label>
                         </td>
                         <td className="py-2.5 pr-3">
-                          {c.verticeMemorial} <span className="text-zinc-500">→ vértice {c.indiceLote + 1} do lote</span>
+                          {c.verticeMemorial}{" "}
+                          <span className="text-zinc-500">{c.confianca === "coordenadas" ? "→ coordenada do memorial" : `→ vértice ${c.indiceLote + 1} do lote`}</span>
                         </td>
-                        <td className="py-2.5 pr-3">
-                          {c.dentro} de {c.total}
-                        </td>
-                        <td className="py-2.5 pr-3">{c.sobreDivisa}</td>
-                        <td className="py-2.5 pr-3">{c.azimutesCasados}</td>
+                        <td className="py-2.5 pr-3">{c.confianca === "coordenadas" ? "—" : `${c.dentro} de ${c.total}`}</td>
+                        <td className="py-2.5 pr-3">{c.confianca === "coordenadas" ? "—" : c.sobreDivisa}</td>
+                        <td className="py-2.5 pr-3">{c.confianca === "coordenadas" ? "—" : c.azimutesCasados}</td>
                         <td className="py-2.5 pr-3">
                           <span className={`inline-flex rounded-md border px-2 py-0.5 text-xs ${info.classe}`}>{info.rotulo}</span>
                           {c.sigef.nivel === "confirmada" && c.sigef.residuoM != null && (
@@ -223,7 +236,7 @@ export function AzimuteLocalizacao({ projectId, inicial }: { projectId: string; 
               </table>
             </div>
 
-            {escolhida && <AzimuteMapa lote={loc.lote.anel} poligonal={escolhida.vertices} />}
+            {escolhida && <AzimuteMapa lote={loc.lote?.anel ?? []} poligonal={escolhida.vertices} />}
 
             {confirmada ? (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-emerald-500/10 p-4">
@@ -239,7 +252,7 @@ export function AzimuteLocalizacao({ projectId, inicial }: { projectId: string; 
             ) : (
               <div className="space-y-3 rounded-2xl border border-zinc-800 p-4">
                 <p className="text-sm text-zinc-300">
-                  Posição {selecionada + 1} selecionada. Olhe o mapa (troque para satélite ou ruas no canto) e confira se a poligonal está sobre o terreno certo, dentro do contorno do lote.
+                  Posição {selecionada + 1} selecionada. Olhe o mapa (troque para satélite ou ruas no canto) e confira se a poligonal está sobre o terreno certo, no lugar esperado (dentro do contorno do lote, quando ele aparece).
                 </p>
                 <label className="flex items-start gap-2 text-sm text-zinc-300">
                   <input type="checkbox" className="mt-1" checked={conferi} onChange={(e) => setConferi(e.target.checked)} />

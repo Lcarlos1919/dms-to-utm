@@ -17,7 +17,7 @@ function Enquadrar({ pontos }: { pontos: LatLngTuple[] }) {
   useEffect(() => {
     if (!pontos.length) return
     const limites = latLngBounds(pontos)
-    if (limites.isValid()) map.fitBounds(limites.pad(0.2), { maxZoom: 18 })
+    if (limites.isValid()) map.fitBounds(limites.pad(0.2), { maxZoom: 19 })
   }, [map, pontos])
   return null
 }
@@ -34,24 +34,27 @@ export function AzimuteMapa({ lote, poligonal }: { lote: [number, number][]; pol
 
   return (
     <div className="w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900" role="region" aria-label="Mapa com o lote da base e a posição do memorial">
-      <MapContainer center={enquadrar[0]} zoom={16} zoomControl={false} scrollWheelZoom className="h-[420px] w-full bg-zinc-900">
+      <MapContainer center={enquadrar[0]} zoom={16} maxZoom={21} zoomControl={false} scrollWheelZoom className="h-[420px] w-full bg-zinc-900">
         <ZoomControl position="topright" />
         <LayersControl position="topleft">
           <LayersControl.BaseLayer checked name="Satélite">
             <TileLayer
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
               attribution="Imagens &copy; Esri, Maxar, Earthstar Geographics"
-              maxZoom={19}
+              maxNativeZoom={19}
+              maxZoom={21}
             />
           </LayersControl.BaseLayer>
           <LayersControl.BaseLayer name="Ruas">
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" maxNativeZoom={19} maxZoom={21} attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />
           </LayersControl.BaseLayer>
         </LayersControl>
         <Enquadrar pontos={enquadrar} />
-        <Polygon positions={contornoLote} pathOptions={{ color: "#38bdf8", weight: 2, dashArray: "6 6", fillOpacity: 0.04 }}>
-          <Tooltip sticky>Lote na base fundiária</Tooltip>
-        </Polygon>
+        {contornoLote.length >= 3 && (
+          <Polygon positions={contornoLote} pathOptions={{ color: "#38bdf8", weight: 2, dashArray: "6 6", fillOpacity: 0.04 }}>
+            <Tooltip sticky>Lote na base fundiária</Tooltip>
+          </Polygon>
+        )}
         {contornoMemorial.length >= 3 && (
           <Polygon positions={contornoMemorial} pathOptions={{ color: "#84cc16", weight: 2, fillColor: "#84cc16", fillOpacity: 0.2 }} />
         )}

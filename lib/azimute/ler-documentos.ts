@@ -1,5 +1,6 @@
 import "server-only"
 
+import { fusoDaLongitude } from "@/lib/vertix-core/coordenadas"
 import { createAdminClient } from "@/lib/supabase/server"
 import { MAX_PDF_SIZE } from "@/lib/pdf-validation"
 import { lerMemorial } from "@/lib/vertix-core/memorial"
@@ -89,6 +90,13 @@ export async function lerDocumentosDoProjeto(memorialPath: string, plantaPath: s
     ...(s.confrontante ? { confrontante: s.confrontante } : {}),
   }))
 
+  // memorial com coordenadas: guarda até 500 vértices e tira fuso/hemisfério da própria coordenada
+  const coordenadas = memorial?.coordenadas && Object.keys(memorial.coordenadas).length ? Object.fromEntries(Object.entries(memorial.coordenadas).slice(0, 500)) : undefined
+  const primeira = coordenadas ? Object.values(coordenadas)[0] : undefined
+  const fusoLido = primeira ? fusoDaLongitude(primeira.lon) : FUSO_PADRAO
+  const fuso = fusoLido >= 18 && fusoLido <= 25 ? fusoLido : FUSO_PADRAO
+  const hemisferio: "S" | "N" = primeira && primeira.lat > 0 ? "N" : "S"
+
   const dados: AzimuteDados = {
     versao: 1,
     cabecalho: {
@@ -102,11 +110,12 @@ export async function lerDocumentosDoProjeto(memorialPath: string, plantaPath: s
       inicio: memorial?.inicio,
     },
     planta,
-    fuso: FUSO_PADRAO,
-    hemisferio: "S",
+    fuso,
+    hemisferio,
     datum: "SIRGAS 2000",
     segmentos,
     avisosLeitura: avisos.slice(0, 50),
+    ...(coordenadas ? { coordenadas } : {}),
     lidoEm: new Date().toISOString(),
     revisadoEm: null,
   }

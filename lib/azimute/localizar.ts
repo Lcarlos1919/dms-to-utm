@@ -4,6 +4,7 @@
 import type { AzimuteDados, Localizacao } from "./tipos"
 import { buscarAncoras } from "@/lib/vertix-core/ancora"
 import { aneilParaUtm, localizarLote, type Anel, type LoteBase, type Rpc } from "@/lib/vertix-core/fundiario"
+import { posicionarPorCoordenadas } from "@/lib/vertix-core/coordenadas"
 import { calcularPoligonal } from "@/lib/vertix-core/poligonal"
 import { bboxDoLote, buscarParcelasSigef, posicaoFinal, refinarCandidatas } from "@/lib/vertix-core/sigef"
 import { utmParaLonLat } from "@/lib/vertix-core/utm"
@@ -43,6 +44,31 @@ export async function localizarNaBase(dados: AzimuteDados, opt: OpcoesLocalizaca
   const { cabecalho, fuso, hemisferio, segmentos } = dados
   if (!cabecalho.lote) return vazio("nao_encontrado", "O memorial não informa o número do lote.", ["Preencha o lote na identificação e confirme a tabela de novo."])
 
+  // 1) O memorial já traz coordenadas: a posição vem delas, sem depender da base fundiária.
+  const polMemorial = calcularPoligonal(segmentos.map((s) => ({ ...s })))
+  const porCoord = posicionarPorCoordenadas(polMemorial, dados.coordenadas, fuso)
+  if (porCoord) {
+    const fora = porCoord.residuos.filter((r) => r.m !== null && r.m > 0.1)
+    const avisosCoord: string[] = []
+    if (fora.length) avisosCoord.push(`A coordenada escrita diverge do calculado em ${fora.map((r) => `${r.nome} (${arredonda(r.m as number, 2)} m)`).join(", ")}. Foi usada a posição que concorda com os outros vértices; confira no mapa.`)
+    if (porCoord.concordam < 2 && porCoord.comCoordenada > 1) avisosCoord.push("As coordenadas do memorial não concordam entre si com os azimutes. Revise a tabela antes de confiar na posição.")
+    if (porCoord.comCoordenada === 1) avisosCoord.push("Só um vértice tem coordenada legível: não foi possível conferir a posição com os outros.")
+    return vazio("encontrado", "Posição pelas coordenadas escritas no próprio memorial, conferidas com os azimutes.", avisosCoord, {
+      fonte: "memorial",
+      candidatas: [{
+        verticeMemorial: porCoord.ancora, indiceLote: 0, dentro: 0, sobreDivisa: 0, total: porCoord.vertices.length, azimutesCasados: 0,
+        pontuacao: 100, pontuacaoFinal: 100, confianca: "coordenadas",
+        sigef: { nivel: "nenhum", verticesCasados: porCoord.concordam, verticesNaDivisa: 0, residuoM: null, codigo: null, deslocamento: null },
+        vertices: porCoord.vertices.map((v) => { const g = utmParaLonLat(v.x, v.y, fuso, hemisferio); return { nome: v.nome, lon: arredonda(g.lon, 9), lat: arredonda(g.lat, 9) } }),
+      }],
+    })
+  }
+
+  // 2) Sem coordenadas, o lote precisa ser achado na base; só o número do lote não identifica nada.
+  if (!cabecalho.gleba && !cabecalho.nomeGleba) {
+    return vazio("nao_encontrado", "O memorial não informa gleba nem coordenadas: não dá para identificar o lote na base com segurança.", ["Preencha a gleba ou o nome da gleba na identificação e confirme a tabela de novo."])
+  }
+
   const { escolha } = await localizarLote(
     { nomeGleba: cabecalho.nomeGleba, gleba: cabecalho.gleba, lote: cabecalho.lote },
     { rpc: opt.rpc, preferencia: opt.preferencia, timeoutMs: opt.timeoutMs, fetchImpl: opt.fetchImpl },
@@ -60,7 +86,7 @@ export async function localizarNaBase(dados: AzimuteDados, opt: OpcoesLocalizaca
   if (principal.partes > 1) avisos.push(`O lote tem ${principal.partes} partes na base; usada a maior. Confira no mapa.`)
 
   // poligonal do memorial (origem arbitrária) e vértices do lote em UTM do fuso do memorial
-  const pol = calcularPoligonal(segmentos.map((s) => ({ ...s })))
+  const pol = polMemorial
   const lotePts = aneilParaUtm(principal.anel, fuso)
   if (lotePts.length < 3) return vazio("nao_encontrado", "O lote da base tem menos de 3 vértices.", avisos)
   if (lotePts.length <= 4) avisos.push(`A base traz o lote com só ${lotePts.length} vértices (forma simplificada): o encaixe pode variar de 1 a 2 m.`)

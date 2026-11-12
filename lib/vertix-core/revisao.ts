@@ -1,3 +1,4 @@
+import { posicionarPorCoordenadas, type CoordenadasMemorial } from './coordenadas';
 import { dmsToDeg, DMS_SRC, formatDMS, norm360, num, rumoToAzimute } from './angulos';
 import { Segmento } from './memorial';
 import { calcularPoligonal } from './poligonal';
@@ -64,7 +65,8 @@ export function relatorioPoligonal(segs: Segmento[], memorial: Declarados, plant
   const prec = pol.precisao;
   checks.push({
     id: 'fechamento', rotulo: 'Fechamento da poligonal',
-    status: prec >= 10000 ? 'ok' : prec >= 5000 ? 'atencao' : 'erro',
+    // lotes pequenos: a distância vem arredondada ao centímetro, então poucos centímetros de erro são normais
+    status: prec >= 10000 || pol.fechamentoLinear <= 0.05 ? 'ok' : prec >= 5000 || pol.fechamentoLinear <= 0.1 ? 'atencao' : 'erro',
     detalhe: `Erro de ${f2(pol.fechamentoLinear)} m em ${f2(pol.perimetro)} m (1:${Math.round(prec).toLocaleString('pt-BR')}).`,
   });
   const comp = (id: string, rotulo: string, calc: number, ref: number | undefined, unid: string, tolOk: number, tolAt: number, fonte: string): Check =>
@@ -78,6 +80,20 @@ export function relatorioPoligonal(segs: Segmento[], memorial: Declarados, plant
   const ordem = { erro: 2, atencao: 1, ok: 0, sem_dado: 0 } as const;
   const pior = checks.reduce((m, c) => Math.max(m, ordem[c.status]), 0);
   return { calculavel: true, perimetroM: pol.perimetro, fechamentoM: pol.fechamentoLinear, precisao: prec, areaHa: pol.areaHa, checks, situacao: pior === 2 ? 'erro' : pior === 1 ? 'atencao' : 'ok' };
+}
+
+/** Confere as coordenadas escritas no memorial contra a posição calculada pelos azimutes. Nunca bloqueia: só avisa. */
+export function conferirCoordenadas(segs: Segmento[], coords: CoordenadasMemorial | undefined, fuso: number, tol = 0.1): Check[] {
+  if (!coords || !Object.keys(coords).length || validarSegmentos(segs).length) return [];
+  const pos = posicionarPorCoordenadas(calcularPoligonal(segs), coords, fuso, tol);
+  if (!pos) return [];
+  const fora = pos.residuos.filter((r) => r.m !== null && r.m > tol);
+  const sem = pos.residuos.filter((r) => r.m === null).map((r) => r.nome);
+  const partes: string[] = [];
+  if (fora.length) partes.push(`Diverge em ${fora.map((r) => `${r.nome} (${f2(r.m!)} m)`).join(', ')}: provável erro de digitação na coordenada ou na distância desse trecho.`);
+  else partes.push(`${pos.concordam} de ${pos.comCoordenada} vértices batem com as coordenadas do memorial (até ${Math.round(tol * 100)} cm).`);
+  if (sem.length) partes.push(`Sem coordenada legível: ${sem.join(', ')}.`);
+  return [{ id: 'coordenadas', rotulo: 'Coordenadas × azimutes', status: fora.length ? 'atencao' : 'ok', detalhe: partes.join(' ') }];
 }
 
 /** Confere lote e gleba entre memorial e planta (pelo número inicial do lote; gleba sem diferenciar maiúsculas/zeros à esquerda). */
