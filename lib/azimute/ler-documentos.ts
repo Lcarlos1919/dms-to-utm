@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { MAX_PDF_SIZE } from "@/lib/pdf-validation"
 import { lerCoordenadaInicial, lerMemorial } from "@/lib/vertix-core/memorial"
 import { lerRodapePlanta } from "@/lib/vertix-core/planta"
+import { corrigirDistancias, textoCorrecao } from "@/lib/vertix-core/correcao"
 import { ErroPdf, lerPaginasComOcr } from "@/lib/ocr/paginas"
 import { FUSO_PADRAO, type AzimuteDados } from "@/lib/azimute/tipos"
 
@@ -83,7 +84,7 @@ export async function lerDocumentosDoProjeto(memorialPath: string, plantaPath: s
 
   const memorial = memorialTexto.trim() ? lerMemorial(memorialTexto) : null
   if (memorial) avisos.push(...memorial.avisos)
-  const segmentos = (memorial?.segmentos ?? []).map((s) => ({
+  let segmentos = (memorial?.segmentos ?? []).map((s) => ({
     de: s.de,
     para: s.para,
     azimute: s.azimute,
@@ -92,6 +93,12 @@ export async function lerDocumentosDoProjeto(memorialPath: string, plantaPath: s
     distancia: s.distancia,
     ...(s.confrontante ? { confrontante: s.confrontante } : {}),
   }))
+
+  // Distância que contradiz as coordenadas escritas no memorial: corrige só quando o perímetro declarado confirma.
+  const corr = corrigirDistancias(segmentos, memorial?.coordenadas, memorial?.perimetroM)
+  segmentos = corr.segs
+  for (const c of corr.correcoes) avisos.push(textoCorrecao(c))
+  for (const suspeita of corr.suspeitas) avisos.push(suspeita)
 
   // Coordenada de partida e fuso declarados no próprio memorial (quando existem).
   const coord = memorialTexto.trim() ? lerCoordenadaInicial(memorialTexto, memorial?.inicio) : undefined

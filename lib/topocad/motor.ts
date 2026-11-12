@@ -166,7 +166,10 @@ export function processarTexto(texto: string, opcoes: OpcoesMotor = {}): Resulta
   // Sem tabela: tenta o memorial em texto corrido (coordenadas escritas em cada vértice).
   if (vertices.length === 0) {
     const prosa = verticesDeProsa(texto);
-    if (prosa.length) vertices = prosa;
+    if (prosa.vertices.length) {
+      vertices = prosa.vertices;
+      avisos = [...avisos, ...prosa.avisos];
+    }
   }
   return processarVertices(
     vertices,
