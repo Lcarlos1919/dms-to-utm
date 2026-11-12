@@ -12,6 +12,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/config"
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/server"
 import { STALE_PROCESSING_MESSAGE, isStaleProcessing, staleProcessingCutoff } from "@/lib/project-status"
 import { linhaParaVertice } from "@/lib/topocad-db/mapeamento"
+import { AzimuteRevisao } from "@/components/dashboard/azimute-revisao"
+import { AZIMUTE_STATUS, azimuteDadosSchema, type AzimuteStatus } from "@/lib/azimute/tipos"
 
 export const metadata: Metadata = { title: "Projeto — Vertix" }
 
@@ -31,7 +33,7 @@ export default async function ProjetoPage({ params }: { params: Promise<{ id: st
   const supabase = createAdminClient()
   const { data: project, error: projectError } = await supabase
     .from("projects")
-    .select("id,name,status,utm_zone,utm_hemisphere,datum,error_message,created_at,updated_at,is_closed,closure_error_m")
+    .select("id,name,status,utm_zone,utm_hemisphere,datum,error_message,created_at,updated_at,is_closed,closure_error_m,memorial_type,source_pdf_path,planta_path,azimute_status,azimute_dados")
     .eq("id", id)
     .eq("user_id", userId)
     .maybeSingle()
@@ -62,6 +64,37 @@ export default async function ProjetoPage({ params }: { params: Promise<{ id: st
       .lt("updated_at", staleProcessingCutoff())
     project.status = "error"
     project.error_message = STALE_PROCESSING_MESSAGE
+  }
+
+  if (project.memorial_type === "azimute") {
+    const [memorialUrl, plantaUrl] = await Promise.all(
+      [project.source_pdf_path, project.planta_path].map(async (path: string | null) => {
+        if (!path) return null
+        const { data } = await supabase.storage.from("memoriais").createSignedUrl(path, 3600)
+        return data?.signedUrl ?? null
+      }),
+    )
+    const dados = azimuteDadosSchema.safeParse(project.azimute_dados)
+    const status = (AZIMUTE_STATUS as readonly string[]).includes(project.azimute_status) ? (project.azimute_status as AzimuteStatus) : "pendente"
+    return (
+      <div className="space-y-6">
+        <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-200">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Projetos
+        </Link>
+        <div>
+          <h1 className="font-display text-2xl font-semibold text-zinc-100">{project.name}</h1>
+          <p className="text-sm text-zinc-500">Memorial por azimute · criado em {formatDate(project.created_at)}</p>
+        </div>
+        <AzimuteRevisao
+          projectId={project.id}
+          initialStatus={status}
+          initialDados={dados.success ? dados.data : null}
+          memorialUrl={memorialUrl}
+          plantaUrl={plantaUrl}
+        />
+      </div>
+    )
   }
 
   const { data: rows, error: verticesError } = await supabase
