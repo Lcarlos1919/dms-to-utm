@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react"
 import { CircleMarker, MapContainer, Polygon, Popup, TileLayer, Tooltip, ZoomControl, useMap } from "react-leaflet"
 import { latLngBounds, type LatLngTuple } from "leaflet"
 import { utmParaGeograficas, type Vertice } from "@/lib/topocad"
+import { GOOGLE_MAPS_KEY, MapaGoogle } from "@/components/dashboard/mapa-google"
 
 type ProjectMapProps = {
   vertices: Vertice[]
@@ -67,6 +68,10 @@ export function ProjectMap({ vertices, utmZone, hemisphere, datum }: ProjectMapP
   }, [crs, vertices])
 
   const positions = useMemo(() => points.map((point) => point.position), [points])
+  const pontosGoogle = useMemo(
+    () => points.map(({ position: [lat, lon], vertex }) => ({ lat, lon, nome: vertex.codigo })),
+    [points],
+  )
 
   if (!crs) {
     return (
@@ -81,6 +86,16 @@ export function ProjectMap({ vertices, utmZone, hemisphere, datum }: ProjectMapP
       <div className="flex h-[420px] w-full items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900 p-6 text-center" role="status">
         <p className="max-w-md text-sm text-zinc-400">Ainda não há coordenadas UTM válidas para mostrar no mapa.</p>
       </div>
+    )
+  }
+
+  if (GOOGLE_MAPS_KEY) {
+    return (
+      <MapaGoogle
+        poligono={pontosGoogle}
+        vertices={pontosGoogle}
+        rotuloAcessivel="Mapa de satélite dos vértices"
+      />
     )
   }
 

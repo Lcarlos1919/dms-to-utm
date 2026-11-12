@@ -35,6 +35,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       {
         georreferenciado: arquivos.georreferenciado,
         pendencias: arquivos.pendencias,
+        avisos: arquivos.avisos,
         disponiveis: { kml: !!arquivos.kml, dxf: !!arquivos.dxf, xlsx: !!arquivos.xlsx },
       },
       { headers },

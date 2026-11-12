@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 interface Resumo {
   georreferenciado: boolean
   pendencias: string[]
+  avisos: string[]
   disponiveis: { kml: boolean; dxf: boolean; xlsx: boolean }
 }
 
@@ -76,6 +77,17 @@ export function AzimuteArquivos({ projectId, chave }: { projectId: string; chave
                 </Button>
               ))}
             </div>
+
+            {resumo.avisos.length > 0 && (
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-zinc-200">Avisos</h3>
+                <ul className="list-disc space-y-1.5 pl-5 text-sm text-zinc-400">
+                  {resumo.avisos.map((a, i) => (
+                    <li key={i}>{a}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {resumo.pendencias.length > 0 && (
               <div>
