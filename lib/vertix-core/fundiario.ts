@@ -139,7 +139,7 @@ export async function buscarNoGeoportal(q: Consulta, opt: { timeoutMs?: number; 
 // ---------- comparação e escolha ----------
 const fusoDe = (lon: number) => Math.floor((lon + 180) / 6) + 1;
 
-/** Maior distância (m) entre um vértice de um anel e o vértice mais próximo do outro, nos dois sentidos, nos dois sentidos. */
+/** Maior distância (m) entre um vértice de um anel e o vértice mais próximo do outro, nos dois sentidos. */
 export function distanciaEntreAneis(a: Anel, b: Anel): number {
   if (!a?.length || !b?.length) return Infinity;
   const fuso = fusoDe(a[0][0]);
