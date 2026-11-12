@@ -39,7 +39,7 @@ const lerNumero = (t: string) => {
 }
 
 function deSegmento(s: AzimuteDados["segmentos"][number]): Linha {
-  return { id: novoId(), de: s.de, para: s.para, anguloTexto: s.azimuteTexto, azimute: s.azimute, tipo: s.tipo, distanciaTexto: fmtNum(s.distancia), confrontante: s.confrontante ?? "" }
+  return { id: novoId(), de: s.de, para: s.para, anguloTexto: s.tipo === "azimute" ? textoAzimute(s.azimute) : s.azimuteTexto, azimute: s.azimute, tipo: s.tipo, distanciaTexto: fmtNum(s.distancia), confrontante: s.confrontante ?? "" }
 }
 
 function paraSegmento(l: Linha): Segmento {
@@ -184,7 +184,7 @@ export function AzimuteRevisao({
       })
       setStatus(r.status)
       if (confirmar) setConferi(false)
-      setMensagem({ tipo: "ok", texto: confirmar ? "Tabela confirmada. Próxima etapa: localizar o lote na base fundiária (em breve)." : "Rascunho salvo." })
+      setMensagem({ tipo: "ok", texto: confirmar ? "Tabela confirmada. Próxima etapa: localizar o lote na base fundiária (logo abaixo)." : "Rascunho salvo." })
       router.refresh()
     } catch (e) {
       setMensagem({ tipo: "erro", texto: e instanceof Error ? e.message : "Erro ao salvar." })

@@ -35,6 +35,60 @@ export const plantaSchema = z.object({
   perimetroM: z.number().finite().optional(),
 })
 
+const lonLat = z.tuple([z.number().finite(), z.number().finite()])
+const fonteLote = z.enum(["banco", "geoportal"])
+
+/** Resultado da busca do lote na base fundiária (D2). Só números e identificação do lote; sem dados de proprietário. */
+export const localizacaoSchema = z.object({
+  versao: z.literal(1),
+  localizadoEm: z.string(),
+  estado: z.enum(["encontrado", "nao_encontrado", "sem_fontes"]),
+  fonte: fonteLote.nullable(),
+  motivo: z.string().max(400),
+  avisos: z.array(z.string().max(400)).max(30),
+  divergenciaM: z.number().nullable(),
+  lote: z
+    .object({
+      feicaoId: z.string().max(120).nullable(),
+      nomeGleba: z.string().max(120),
+      gleba: z.string().max(40),
+      lote: z.string().max(40),
+      areaOficialHa: z.number().nullable(),
+      baseData: z.string().max(40).nullable(),
+      anel: z.array(lonLat).max(3000),
+    })
+    .nullable(),
+  alternativas: z
+    .array(z.object({ fonte: fonteLote, feicaoId: z.string().max(120).nullable(), nomeGleba: z.string().max(120), gleba: z.string().max(40), lote: z.string().max(40) }))
+    .max(10),
+  sigef: z.object({ consultado: z.boolean(), ok: z.boolean(), parcelas: z.number().int().min(0), falhas: z.array(z.string().max(300)).max(5) }),
+  candidatas: z
+    .array(
+      z.object({
+        verticeMemorial: z.string().max(24),
+        indiceLote: z.number().int().min(0),
+        dentro: z.number().int().min(0),
+        sobreDivisa: z.number().int().min(0),
+        total: z.number().int().min(0),
+        azimutesCasados: z.number().int().min(0),
+        pontuacao: z.number(),
+        pontuacaoFinal: z.number(),
+        confianca: z.enum(["sigef_confirmada", "sigef_divisa", "siglo"]),
+        sigef: z.object({
+          nivel: z.enum(["confirmada", "divisa", "nenhum"]),
+          verticesCasados: z.number().int().min(0),
+          verticesNaDivisa: z.number().int().min(0),
+          residuoM: z.number().nullable(),
+          codigo: z.string().max(60).nullable(),
+          deslocamento: z.object({ dE: z.number(), dN: z.number() }).nullable(),
+        }),
+        vertices: z.array(z.object({ nome: z.string().max(24), lon: z.number(), lat: z.number() })).max(500),
+      }),
+    )
+    .max(5),
+})
+export type Localizacao = z.infer<typeof localizacaoSchema>
+
 export const azimuteDadosSchema = z.object({
   versao: z.literal(1),
   cabecalho: cabecalhoSchema,
@@ -46,6 +100,8 @@ export const azimuteDadosSchema = z.object({
   avisosLeitura: z.array(z.string().max(300)).max(50),
   lidoEm: z.string().nullable(),
   revisadoEm: z.string().nullable(),
+  /** Preenchido pelo D2; apagado sempre que a tabela é salva de novo (a posição deixa de valer). */
+  localizacao: localizacaoSchema.optional(),
 })
 
 export type AzimuteDados = z.infer<typeof azimuteDadosSchema>
