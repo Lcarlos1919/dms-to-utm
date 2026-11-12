@@ -11,11 +11,8 @@ export function num(s: string): number {
 /** Casa um DMS tolerante: aspas de segundos podem faltar, minutos/segundos podem faltar. */
 export const DMS_SRC = `(\\d{1,3})\\s*${DEG}\\s*(?:(\\d{1,2})\\s*${MIN}\\s*(?:(\\d{1,2}(?:[.,]\\d+)?)\\s*(?:${SEC})?)?)?`;
 
-/** Segundos: o ponto ou a vírgula são SEMPRE decimais (em segundos não existe separador de milhar). */
-export const numDecimal = (s: string): number => parseFloat(s.replace(/\s/g, '').replace(',', '.'));
-
 export function dmsToDeg(d: string, m?: string, s?: string): number {
-  return Number(d) + (m ? Number(m) / 60 : 0) + (s ? numDecimal(s) / 3600 : 0);
+  return Number(d) + (m ? Number(m) / 60 : 0) + (s ? num(s) / 3600 : 0);
 }
 
 export const norm360 = (a: number) => ((a % 360) + 360) % 360;
@@ -25,11 +22,11 @@ export function parseDMS(txt: string): number | undefined {
   const m = new RegExp(`^\\s*${DMS_SRC}\\s*$`).exec(txt);
   if (!m) return undefined;
   const v = dmsToDeg(m[1], m[2], m[3]);
-  if (Number(m[2]) >= 60 || (m[3] && numDecimal(m[3]) >= 60)) return undefined;
+  if (Number(m[2]) >= 60 || (m[3] && num(m[3]) >= 60)) return undefined;
   return v;
 }
 
-/** Rumo (quadrante) -> azimute. Ex.: N 45°10'20\" E, S 10° W. Aceita L/O (leste/oeste). */
+/** Rumo (quadrante) -> azimute. Ex.: N 45°10'20" E, S 10° W. Aceita L/O (leste/oeste). */
 export function rumoToAzimute(ns: string, deg: number, ew: string): number {
   const n = ns.toUpperCase() === 'N';
   const e = /^[EL]$/i.test(ew);

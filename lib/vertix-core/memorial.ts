@@ -56,7 +56,7 @@ export function lerMemorial(textoBruto: string): MemorialLido {
 
   // Segmentos: "[confrontando com X,] com azimute de A por uma distância de D m, até o ponto ID"
   const re = new RegExp(
-    `(?:segue\\s+confrontando\\s+com\\s+(.+?),\\s*)?(?:com\\s+)?(azimute|rumo)\\s+(?:de\\s+)?(?:(${ANG_RUMO})|(${ANG_AZ}))\\s*,?\\s*por\\s+uma\\s+dist[âa]ncia\\s+de\\s*([\\d.,]+)\\s*m(?:etros)?\\b[^,]*?,?\\s*at[ée]\\s+(?:o\\s+)?(?:ponto|v[ée]rtice|marco)\\s+${ID}`,
+    `(?:segue\\s+confrontando\\s+com\\s+(.+?),\\s*)?(?:com\\s+)?(azimute|rumo)\\s+(?:de\\s+)?(?:(${ANG_RUMO})|(${ANG_AZ}))\\s*,?\\s*por\\s+uma\\s+dist[âa]ncia\\s+de\\s+([\\d.,]+)\\s*m(?:etros)?\\b[^,]*?,?\\s*at[ée]\\s+(?:o\\s+)?(?:ponto|v[ée]rtice|marco)\\s+${ID}`,
     'gi',
   );
   let cur = out.inicio ?? '';
@@ -74,7 +74,6 @@ export function lerMemorial(textoBruto: string): MemorialLido {
       txt = m[9].trim();
     }
     const dist = num(m[13]);
-    if (/^\d+\.\d{3}$/.test(m[13].trim())) avisos.push(`Distância "${m[13]}" (até ${limpaId(m[14])}): ponto com 3 casas pode ser decimal ou milhar; lida como milhar (${dist} m). Conferir.`);
     const para = limpaId(m[14]);
     if (az >= 360 || !isFinite(dist) || dist <= 0) avisos.push(`Segmento ${cur}→${para}: valor suspeito (${txt}, ${m[13]} m)`);
     out.segmentos.push({ de: cur, para, azimute: norm360(az), azimuteTexto: txt, tipo, distancia: dist, confrontante: m[1]?.trim() });
@@ -83,9 +82,6 @@ export function lerMemorial(textoBruto: string): MemorialLido {
 
   if (!out.segmentos.length) avisos.push('Nenhum segmento reconhecido: usar leitura por IA ou digitação manual.');
   else {
-    const soma = out.segmentos.reduce((a, x) => a + (isFinite(x.distancia) ? x.distancia : 0), 0);
-    if (out.perimetroM && Math.abs(soma - out.perimetroM) / out.perimetroM > 0.005)
-      avisos.push(`A soma das distâncias (${soma.toFixed(2)} m) não confere com o perímetro declarado (${out.perimetroM} m): conferir a tabela.`);
     if (out.inicio && cur !== out.inicio) avisos.push(`A descrição não volta ao ponto inicial (${out.inicio}); último ponto: ${cur}.`);
     const nPalavras = (corpo.match(/\b(azimute|rumo)\b/gi) || []).length;
     if (nPalavras !== out.segmentos.length) avisos.push(`Foram vistas ${nPalavras} menções a azimute/rumo mas lidos ${out.segmentos.length} segmentos: conferir a tabela.`);
