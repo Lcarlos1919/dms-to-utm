@@ -1,7 +1,6 @@
-import { z } from "zod"
 import { revalidatePath } from "next/cache"
-import { erroApi, identidadeApi } from "@/lib/api/projetos"
-import { canUseFeature } from "@/lib/features"
+import { erroApi } from "@/lib/api/projetos"
+import { carregarProjetoAzimute as carregar } from "@/lib/azimute/contexto"
 import { createAdminClient } from "@/lib/supabase/server"
 import { ErroLeitura, lerDocumentosDoProjeto } from "@/lib/azimute/ler-documentos"
 import { azimuteDadosSchema, salvarRevisaoSchema, type AzimuteDados } from "@/lib/azimute/tipos"
@@ -10,35 +9,6 @@ import { relatorioPoligonal, validarSegmentos } from "@/lib/vertix-core/revisao"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
-
-const idSchema = z.string().uuid()
-
-type Contexto =
-  | { ok: true; userId: string; id: string; project: { id: string; source_pdf_path: string | null; planta_path: string | null; azimute_dados: unknown; azimute_status: string } }
-  | { ok: false; response: Response }
-
-async function carregar(params: Promise<{ id: string }>): Promise<Contexto> {
-  const userId = await identidadeApi()
-  if (!userId) return { ok: false, response: erroApi(401, "NAO_AUTORIZADO", "Entre na sua conta.") }
-  const id = idSchema.safeParse((await params).id)
-  if (!id.success) return { ok: false, response: erroApi(400, "ENTRADA_INVALIDA", "Projeto inválido.") }
-
-  const { data: project, error } = await createAdminClient()
-    .from("projects")
-    .select("id,memorial_type,source_pdf_path,planta_path,azimute_dados,azimute_status")
-    .eq("id", id.data)
-    .eq("user_id", userId)
-    .maybeSingle()
-  if (error) return { ok: false, response: erroApi(500, "ERRO_BANCO", "Não foi possível carregar o projeto.") }
-  if (!project) return { ok: false, response: erroApi(404, "NAO_ENCONTRADO", "Projeto não encontrado.") }
-  if (project.memorial_type !== "azimute") {
-    return { ok: false, response: erroApi(400, "TIPO_INCOMPATIVEL", "Este projeto não é do tipo azimute.") }
-  }
-  if (!(await canUseFeature(userId, "memorial_azimute"))) {
-    return { ok: false, response: erroApi(403, "FEATURE_BLOQUEADA", "O memorial por azimute não está habilitado para este plano.") }
-  }
-  return { ok: true, userId, id: id.data, project }
-}
 
 /** Lê os dois PDFs e grava a tabela de segmentos para revisão. */
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -106,6 +76,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     avisosLeitura: atual.success ? atual.data.avisosLeitura : [],
     lidoEm: atual.success ? atual.data.lidoEm : agora,
     revisadoEm: confirmar ? agora : null,
+    // a posição calculada vale para a tabela anterior: ao salvar de novo, é preciso localizar outra vez
+    localizacao: undefined,
   }
   const status = confirmar ? "revisado" : "lido"
 

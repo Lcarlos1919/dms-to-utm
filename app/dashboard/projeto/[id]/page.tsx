@@ -12,6 +12,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config"
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/server"
 import { STALE_PROCESSING_MESSAGE, isStaleProcessing, staleProcessingCutoff } from "@/lib/project-status"
 import { linhaParaVertice } from "@/lib/topocad-db/mapeamento"
+import { AzimuteLocalizacao } from "@/components/dashboard/azimute-localizacao"
 import { AzimuteRevisao } from "@/components/dashboard/azimute-revisao"
 import { AZIMUTE_STATUS, azimuteDadosSchema, type AzimuteStatus } from "@/lib/azimute/tipos"
 
@@ -93,6 +94,9 @@ export default async function ProjetoPage({ params }: { params: Promise<{ id: st
           memorialUrl={memorialUrl}
           plantaUrl={plantaUrl}
         />
+        {status === "revisado" && dados.success && (
+          <AzimuteLocalizacao projectId={project.id} inicial={dados.data.localizacao ?? null} />
+        )}
       </div>
     )
   }
