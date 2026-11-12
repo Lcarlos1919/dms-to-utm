@@ -1,14 +1,25 @@
 "use client"
 
 import { useState } from "react"
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, CheckCircle2, Loader2, MapPin, RefreshCw, XCircle } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Loader2, Map as MapIcon, MapPin, RefreshCw, XCircle } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard/dashboard-card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { Localizacao } from "@/lib/azimute/tipos"
 
 type Candidata = Localizacao["candidatas"][number]
+
+const AzimuteMapa = dynamic(() => import("./azimute-mapa").then((m) => m.AzimuteMapa), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-[420px] w-full items-center justify-center rounded-lg bg-zinc-900" role="status">
+      <MapIcon className="size-8 text-zinc-500" aria-hidden="true" />
+      <span className="sr-only">Carregando mapa</span>
+    </div>
+  ),
+})
 
 const rotuloFonte = { banco: "base fundiária (Supabase)", geoportal: "GeoPortal da SEDAM (ao vivo)" } as const
 
@@ -25,6 +36,9 @@ export function AzimuteLocalizacao({ projectId, inicial }: { projectId: string; 
   const [loc, setLoc] = useState<Localizacao | null>(inicial)
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [selecionada, setSelecionada] = useState(inicial?.confirmada?.indice ?? 0)
+  const [conferi, setConferi] = useState(false)
+  const [salvando, setSalvando] = useState(false)
 
   async function localizar() {
     setOcupado(true)
@@ -34,6 +48,8 @@ export function AzimuteLocalizacao({ projectId, inicial }: { projectId: string; 
       const json = (await resposta.json().catch(() => null)) as { ok?: boolean; localizacao?: Localizacao; erro?: { mensagem?: string } } | null
       if (!resposta.ok || !json?.ok || !json.localizacao) throw new Error(json?.erro?.mensagem ?? "Não foi possível localizar o lote.")
       setLoc(json.localizacao)
+      setSelecionada(json.localizacao.confirmada?.indice ?? 0)
+      setConferi(false)
       router.refresh()
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível localizar o lote.")
@@ -41,6 +57,29 @@ export function AzimuteLocalizacao({ projectId, inicial }: { projectId: string; 
       setOcupado(false)
     }
   }
+
+  async function posicao(metodo: "POST" | "DELETE") {
+    setSalvando(true)
+    setErro(null)
+    try {
+      const resposta = await fetch(`/api/projetos/${projectId}/azimute/posicao`, {
+        method: metodo,
+        ...(metodo === "POST" ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ indice: selecionada }) } : {}),
+      })
+      const json = (await resposta.json().catch(() => null)) as { ok?: boolean; localizacao?: Localizacao; erro?: { mensagem?: string } } | null
+      if (!resposta.ok || !json?.ok || !json.localizacao) throw new Error(json?.erro?.mensagem ?? "Não foi possível salvar a posição.")
+      setLoc(json.localizacao)
+      setConferi(false)
+      router.refresh()
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível salvar a posição.")
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  const confirmada = loc?.confirmada ?? null
+  const escolhida = loc?.candidatas[Math.min(selecionada, (loc?.candidatas.length ?? 1) - 1)]
 
   return (
     <DashboardCard>
@@ -127,7 +166,7 @@ export function AzimuteLocalizacao({ projectId, inicial }: { projectId: string; 
               <table className="w-full min-w-[640px] text-left text-sm">
                 <thead className="text-xs text-zinc-500">
                   <tr>
-                    <th className="py-2 pr-3 font-medium">#</th>
+                    <th className="py-2 pr-3 font-medium">Ver</th>
                     <th className="py-2 pr-3 font-medium">Âncora</th>
                     <th className="py-2 pr-3 font-medium">Vértices dentro do lote</th>
                     <th className="py-2 pr-3 font-medium">Na divisa</th>
@@ -139,15 +178,29 @@ export function AzimuteLocalizacao({ projectId, inicial }: { projectId: string; 
                   {loc.candidatas.map((c, i) => {
                     const info = confiancaInfo[c.confianca]
                     return (
-                      <tr key={`${c.verticeMemorial}-${c.indiceLote}`} className="border-t border-zinc-800 text-zinc-200">
+                      <tr
+                        key={`${c.verticeMemorial}-${c.indiceLote}`}
+                        onClick={() => !confirmada && setSelecionada(i)}
+                        className={`border-t border-zinc-800 text-zinc-200 ${i === selecionada ? "bg-zinc-800/50" : ""} ${confirmada ? "" : "cursor-pointer"}`}
+                      >
                         <td className="py-2.5 pr-3">
-                          {i === 0 ? (
-                            <span className="inline-flex items-center gap-1 text-emerald-300">
-                              <CheckCircle2 className="h-4 w-4" aria-hidden="true" />1
-                            </span>
-                          ) : (
-                            i + 1
-                          )}
+                          <label className="inline-flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name="posicao"
+                              checked={i === selecionada}
+                              disabled={!!confirmada}
+                              onChange={() => setSelecionada(i)}
+                              aria-label={`Ver a posição ${i + 1} no mapa`}
+                            />
+                            {i === 0 ? (
+                              <span className="inline-flex items-center gap-1 text-emerald-300">
+                                <CheckCircle2 className="h-4 w-4" aria-hidden="true" />1
+                              </span>
+                            ) : (
+                              i + 1
+                            )}
+                          </label>
                         </td>
                         <td className="py-2.5 pr-3">
                           {c.verticeMemorial} <span className="text-zinc-500">→ vértice {c.indiceLote + 1} do lote</span>
@@ -170,9 +223,35 @@ export function AzimuteLocalizacao({ projectId, inicial }: { projectId: string; 
               </table>
             </div>
 
-            <p className="text-xs text-zinc-500">
-              A posição 1 é a recomendada, mas nada é definitivo: o mapa para conferir e confirmar a posição vem na próxima etapa. Localizado em {new Date(loc.localizadoEm).toLocaleString("pt-BR")}.
-            </p>
+            {escolhida && <AzimuteMapa lote={loc.lote.anel} poligonal={escolhida.vertices} />}
+
+            {confirmada ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-emerald-500/10 p-4">
+                <p className="flex items-center gap-2 text-sm text-emerald-300">
+                  <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  Posição {confirmada.indice + 1} confirmada em {new Date(confirmada.confirmadoEm).toLocaleString("pt-BR")}. A geração dos arquivos (KML, DXF, XLSX) vem na próxima etapa.
+                </p>
+                <Button variant="outline" onClick={() => posicao("DELETE")} disabled={salvando}>
+                  {salvando ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
+                  Escolher outra posição
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3 rounded-2xl border border-zinc-800 p-4">
+                <p className="text-sm text-zinc-300">
+                  Posição {selecionada + 1} selecionada. Olhe o mapa (troque para satélite ou ruas no canto) e confira se a poligonal está sobre o terreno certo, dentro do contorno do lote.
+                </p>
+                <label className="flex items-start gap-2 text-sm text-zinc-300">
+                  <input type="checkbox" className="mt-1" checked={conferi} onChange={(e) => setConferi(e.target.checked)} />
+                  Conferi no mapa e esta é a posição correta do imóvel.
+                </label>
+                <Button onClick={() => posicao("POST")} disabled={!conferi || salvando}>
+                  {salvando ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
+                  Confirmar esta posição
+                </Button>
+              </div>
+            )}
+            <p className="text-xs text-zinc-500">Localizado em {new Date(loc.localizadoEm).toLocaleString("pt-BR")}.</p>
           </div>
         )}
       </div>
