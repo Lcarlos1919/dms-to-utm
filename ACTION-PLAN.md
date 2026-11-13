@@ -1,82 +1,116 @@
-# Linha do tempo e plano de ação
+# Plano de ação do Vertix
 
-**Atualizado em:** 2026-10-29
+**Última revisão:** 2026-11-13
+**Base do código:** `6f26ecd` (`main`)
 
-**Base revisada:** `2bedd40` — merge do PR #9, com a exportação KML.
+Documentos irmãos: `ROADMAP.md` (visão e fases) e `TIMELINE.md` (histórico com commits).
 
-## Objetivo
+Legenda: `[x]` feito · `[ ]` a fazer · ⚠️ bloqueia outras tarefas.
 
-Dar continuidade ao Vertix e ao motor TopoCAD com mudanças pequenas, rastreáveis e compatíveis com o fluxo geoespacial. Separar o que foi validado no código do que ainda depende de sessão autenticada ou configuração no Supabase/Vercel.
+---
 
-## Linha do tempo confirmada
+## 1. O que já foi feito
 
-| Data | Marco | Evidência no Git |
-| --- | --- | --- |
-| 2026-10-27 | Refinamento da identidade de autenticação do Vertix | `78a657a` — `Refine Vertix auth branding` |
-| 2026-10-27 | Permissões para exclusão de projetos | `d4ae616` — `Enforce project deletion permissions`; integrado pelo PR #8 |
-| 2026-10-27 | Exportação KML no fluxo do projeto | `f5e026c` — `Add KML export support`; merge `2bedd40`, PR #9 |
-| 2026-10-29 | Validação local da entrega KML | TypeScript, build, 8 testes KML, parsing XML e `git diff --check` passaram; o navegador confirmou `/sign-in`, mas os fluxos pós-login seguem pendentes |
+### Base da aplicação
+- [x] Next.js 16, React 19, TypeScript e pnpm.
+- [x] Login e cadastro com Clerk, marca Vertix nas telas de autenticação.
+- [x] Webhook Clerk verificado (`app/api/webhooks/clerk/route.ts`).
+- [x] Supabase com schema base (`001`), segurança admin (`002`), RBAC de staff (`003`), remoção do admin legado (`004`) e código repetido de vértices (`005_vertices_codigo_repetido`).
+- [x] Landing page com seções de recursos, preços, depoimentos e CTA.
 
-Datas futuras não são estimadas aqui; a sequência abaixo indica ordem, não prazo.
+### Fluxo por coordenadas
+- [x] Upload e validação de PDF (`lib/pdf-validation.ts`).
+- [x] Parser do memorial com `unpdf` e detecção de datum, fuso e hemisfério.
+- [x] Conversão DMS/UTM, fechamento, área e perímetro.
+- [x] Mapa Leaflet, edição de vértices, reprocessamento e repetição de projetos com erro.
+- [x] Exportação DXF R12 e XLSX.
+- [x] Exportação KML 2.2 (WGS84, bloqueio de SAD69/CRS inválido, limites do Brasil) com 8 testes.
+- [x] Fixtures sintéticas em `lib/topocad/__fixtures__` (normal, quebra de linha, Unicode, sem vértices, vazio, aberto).
 
-## Estado atual por frente
+### Administração e planos
+- [x] Painel admin: usuários, projetos, uso, logs, planos, assinaturas, staff e configurações.
+- [x] RBAC de staff via organização Clerk, convites e auditoria.
+- [x] Download do PDF original e preparação de DXF/XLSX auditados.
+- [x] Exclusão de projetos com verificação de permissão.
+- [x] Planos `free`/`pro`, limite gratuito mensal configurável e créditos bônus.
+- [x] Acesso por ferramenta e plano (`memorial_azimute`, `export_kml`) editável no admin.
 
-- **Fundação:** `pnpm exec tsc --noEmit` e `pnpm run build` passaram na última validação registrada. A aplicação das migrações e o estado remoto de RLS/Storage não foram confirmados por esse build.
-- **Motor e exportação:** KML 2.2 foi integrado; converte UTM para WGS84, fecha o polígono, inclui placemarks de vértices e `ExtendedData`, escapa texto XML e rejeita SAD69/CRS inválido/coordenadas fora do Brasil.
-- **Uso e plano:** `lib/usage.ts` aplica limite gratuito mensal configurável (padrão 3), créditos bônus e uso ilimitado para `pro`. A contagem é de processamento de memoriais, não de downloads. Cobrança real não está conectada.
-- **Dados KML:** datum, fuso e hemisfério já estão no schema do projeto. Proprietário e município não são armazenados; esses valores são exportados vazios até existir uma decisão de captura/persistência.
-- **Administração:** permissões e auditoria estão no código. Validar a configuração SQL e os fluxos autenticados no ambiente de destino continua pendente.
+### Fluxo por azimute (parcial)
+- [x] Campo `memorial_type` e upload de memorial + planta.
+- [x] Biblioteca `lib/vertix-core` (ângulos, poligonal, âncora, lote, memorial, base fundiária).
+- [x] D1 — leitura dos PDFs e tela de revisão (commit `255657b`). **Apagada depois; ver tarefa 1.1.**
 
-## Plano de ação
+### Validações registradas
+- [x] `pnpm exec tsc --noEmit`, `pnpm run build` e `pnpm run test:kml` — passaram em 2026-10-29.
 
-### 1. Confirmar o ambiente de dados e segurança
+---
 
-- Revisar a ordem dos scripts `supabase/001_schema.sql`, `002_admin-security.sql`, `003_staff-rbac.sql`, `004_drop_legacy_admin.sql` e `005_vertices_codigo_repetido.sql`.
-- Em ambiente autorizado, confirmar quais scripts já foram aplicados e executar `supabase/verify.sql`.
-- Conferir RLS, Storage privado, escopo por `user_id`, webhook Clerk e permissões de staff.
-- Não executar migrações no ambiente de produção sem revisão e aprovação explícita.
+## 2. O que falta fazer
 
-### 2. Rodar smoke test autenticado
+### Etapa 1 — Estabilizar (P0) ⚠️
 
-- Usar uma conta de teste autorizada; verificar sign-in, sign-out, sessão expirada e redirects.
-- Criar e processar PDF de teste; conferir estados do projeto, edição e geometria.
-- Baixar DXF, XLSX e KML; conferir KML em um consumidor geográfico.
-- Confirmar bloqueios KML para SAD69, datum/fuso ausentes ou inconsistentes e erro de coordenadas fora dos limites.
-- Repetir em desktop e viewport móvel.
+- [ ] **1.1** Restaurar os 11 arquivos do PR #14 a partir de `255657b` em um branch, conferir com `tsc` e build e abrir PR.
+  - `lib/azimute/`, `lib/vertix-core/planta.ts`, `lib/vertix-core/revisao.ts`
+  - `app/api/projetos/[id]/azimute/route.ts`, `components/dashboard/azimute-revisao.tsx`, ajuste em `app/dashboard/projeto/[id]/page.tsx`
+  - `supabase/006_feature_access.sql`, `007_base_fundiaria.sql`, `007b_verificacao.sql`, `008_azimute_dados.sql`
+- [ ] **1.2** Corrigir `supabase/005_project-type.sql`: remover o `insert into public.feature_access` (tabela inexistente); a configuração fica em `app_settings`, criada pelo `006`.
+- [ ] **1.3** Renumerar os dois `005` para deixar a ordem de execução sem ambiguidade e atualizar `verify.sql`.
+- [ ] **1.4** No Supabase autorizado, listar quais scripts já foram aplicados, aplicar os que faltam na ordem e rodar `verify.sql`.
+- [ ] **1.5** Conferir RLS, Storage privado, isolamento por `user_id`, webhook Clerk e permissões de staff em Preview.
+- [ ] **1.6** Teste com login real: usuário comum e staff, criar/processar/editar/exportar projeto, acesso negado e sessão expirada, desktop e celular.
+- [ ] **1.7** Combinar uma regra para o v0: antes de "restaurar" ou fazer merge, comparar com o `main` atual.
 
-### 3. Completar cobertura geoespacial e metadados
+### Etapa 2 — Fluxo por azimute (P1)
 
-- Construir fixtures de parser com DMS, Unicode, quebras de linha, datum, zona, vértices inválidos, fechamento, área e perímetro.
-- Testar idempotência de reprocessamento e as rotas de exportação.
-- Decidir se proprietário e município serão digitados ou extraídos do memorial; só então propor persistência/schema.
+- [ ] **D2** Importador da base fundiária SEDAM/RO para `fundiario_lotes`; ligar `lib/vertix-core/fundiario.ts` a uma rota de busca (banco + GeoPortal, com `fundiario_config`).
+- [ ] **D3** Tela de ponto de amarração: escolher lote da base, digitar coordenada ou clicar no mapa; gravar `anchor_source`, datum, fuso e hemisfério.
+- [ ] **D4** Calcular a poligonal com `lib/vertix-core` (ângulos, poligonal, lote): fechamento, área, comparação com a área oficial e avisos.
+- [ ] **D5** Gravar os vértices em `project_vertices` e reutilizar mapa, edição e exportação DXF/XLSX/KML.
+- [ ] Liberar `memorial_azimute` para os planos desejados no admin quando D5 estiver validado.
 
-### 4. Preparar administração e produção
+### Etapa 3 — Qualidade do motor (P1)
 
-- Testar staff autorizado/não autorizado, auditoria, acesso direto, sessão expirada e ações destrutivas.
-- Definir provedor/preços antes de implementar cobrança real.
-- Fazer Preview, smoke test, revisão de logs e rollback antes de qualquer promoção para Production.
+- [ ] Testes unitários do parser, DMS, datum, fuso/hemisfério, fechamento, área e perímetro usando as fixtures existentes.
+- [ ] Testes de `lib/vertix-core` (azimute → coordenadas, fechamento angular e linear).
+- [ ] Adicionar script `pnpm test` que rode todos os testes.
+- [ ] Validar com memoriais reais anonimizados e abrir DXF/XLSX/KML em QGIS, AutoCAD e Google Earth.
+- [ ] Testar idempotência do reprocessamento e as rotas de exportação.
 
-## Validações registradas
+### Etapa 4 — Produto e administração (P2)
 
-- [x] `pnpm exec tsc --noEmit` — passou em 2026-10-29.
-- [x] `pnpm run test:kml` — 8 casos passaram em 2026-10-29.
-- [x] `pnpm run build` — passou em 2026-10-29.
-- [x] Parsing XML do KML gerado e `git diff --check` — passaram em 2026-10-29.
-- [ ] UI autenticada no navegador — não concluída; a sessão de validação redirecionou para `/sign-in`.
-- [ ] Migrações/RLS/Storage confirmados no Supabase de destino.
-- [ ] Fluxo completo validado com memorial real anonimizado e ferramentas consumidoras.
+- [ ] Decidir se proprietário e município serão digitados ou extraídos do memorial; depois criar coluna e preencher o KML.
+- [ ] Busca, filtros e paginação no painel admin.
+- [ ] Métricas de uso (memoriais por mês, erros de processamento, exportações).
+- [ ] Sincronização Clerk idempotente; decidir se organizações serão também donas de dados.
 
-## Fase 0 — entrada de qualquer novo agente
+### Etapa 5 — Monetização (P2)
 
-1. Ler `README.md`, `ROADMAP.md`, este arquivo e `PROJECT-CONTINUITY-SKILL.md`.
-2. Conferir branch, status Git, `package.json`, `next.config.mjs`, `proxy.ts` e nomes de variáveis sem imprimir valores.
-3. Identificar se a tarefa é UI, domínio geoespacial, autenticação, banco, webhook ou administração.
-4. Rastrear chamadores, dados e consumidores antes de editar.
-5. Registrar hipótese, arquivos afetados, risco e validação prevista.
+- [ ] Escolher provedor de pagamento e definir preços.
+- [ ] Ligar a assinatura `pro` ao pagamento (checkout, webhook, cancelamento).
+- [ ] Atualizar a página de planos e o admin de assinaturas com dados reais.
 
-## Registro de decisões
+### Etapa 6 — Escala e operação (P3)
 
-Use este formato no PR/commit ou ao concluir uma mudança:
+- [ ] Testes de integração para rotas, RLS e Storage.
+- [ ] E2E com login cobrindo projeto, processamento, edição, downloads e admin.
+- [ ] Logs estruturados, alertas e monitoramento de erros.
+- [ ] Processamento de PDFs grandes e muitos vértices.
+- [ ] Rotina de deploy: Preview, teste com login, revisão de logs e plano de rollback antes de Production.
+
+---
+
+## 3. Antes de começar qualquer tarefa
+
+1. Ler `README.md`, `ROADMAP.md`, `TIMELINE.md`, este arquivo e `PROJECT-CONTINUITY-SKILL.md`.
+2. Conferir branch, `git status`, `package.json` e os nomes das variáveis de ambiente, sem imprimir valores.
+3. Identificar a área: tela, motor geoespacial, autenticação, banco, webhook ou admin.
+4. Rastrear quem chama o código e quem consome os dados antes de editar.
+5. Rodar `pnpm exec tsc --noEmit`, `pnpm run test:kml` e `pnpm run build` antes de abrir o PR.
+6. Ao concluir, marcar a tarefa aqui e registrar o marco em `TIMELINE.md`.
+
+## 4. Registro de decisões
+
+Use este formato no PR ou no commit:
 
 - **Decisão:**
 - **Motivo:**
