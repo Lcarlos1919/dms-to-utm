@@ -53,5 +53,6 @@ pnpm run build
 Os scripts SQL ficam em `supabase/`. Revise e aplique alterações somente no ambiente autorizado; o código e este README não aplicam SQL automaticamente. Confira `supabase/verify.sql` após mudanças de schema e acompanhe as pendências em `ACTION-PLAN.md`.
 
 - `ROADMAP.md`: estado do produto, prioridades e decisões de escopo.
-- `ACTION-PLAN.md`: marcos confirmados, validações e próximos passos.
+- `TIMELINE.md`: linha do tempo com os marcos e commits.
+- `ACTION-PLAN.md`: checklist do que foi feito e do que falta fazer.
 - `PROJECT-CONTINUITY-SKILL.md`: mapa técnico e regras para manutenção.
