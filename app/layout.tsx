@@ -79,7 +79,11 @@ export default function RootLayout({
         />
       </head>
       <body className={`${manrope.variable} font-sans antialiased bg-zinc-950 text-zinc-100`}>
-        <ClerkProvider publishableKey={clerkPublishableKey} localization={clerkLocalization}>
+        <ClerkProvider
+          publishableKey={clerkPublishableKey}
+          localization={clerkLocalization}
+          afterSignOutUrl="/sign-in"
+        >
           <AppContent>{children}</AppContent>
         </ClerkProvider>
       </body>

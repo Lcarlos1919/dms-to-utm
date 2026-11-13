@@ -1,6 +1,6 @@
 # Roadmap do Vertix
 
-**Última revisão:** 2026-10-29
+**Última revisão:** 2026-11-13
 
 **Referência de código:** merge do PR #9 (`2bedd40`, 2026-10-27).
 
@@ -13,6 +13,7 @@ O Vertix transforma memoriais descritivos em projetos topográficos revisáveis:
 ### Entregue
 
 - Next.js 16 App Router, React 19 e TypeScript.
+- Landing page removida deste app (2026-11-13): a rota `/` apenas redireciona para `/dashboard` (sessão ativa) ou `/sign-in`. A nova landing será um projeto separado; este projeto fica como o app. O botão "Sair" usa o `SignOutButton` do Clerk e `afterSignOutUrl="/sign-in"`.
 - Clerk para autenticação, identidade e organização administrativa; Supabase para banco, Storage e operações server-side.
 - Dashboard de projetos, processamento de memoriais, visualização e edição de vértices.
 - Painel administrativo, permissões de staff e auditoria; a exclusão de projetos respeita as permissões existentes.
