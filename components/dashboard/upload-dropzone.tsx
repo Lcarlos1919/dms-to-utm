@@ -109,7 +109,7 @@ const stageLabel: Record<Stage, string> = {
   idle: "",
   creating: "Criando projeto...",
   uploading: "Enviando PDF...",
-  verifying: "Validando arquivos...",
+  verifying: "Lendo e posicionando o memorial...",
   done: "Concluído! Redirecionando...",
   error: "",
 }
@@ -306,13 +306,10 @@ export function UploadDropzone({
         return
       }
 
+      const createdProjectId = preparedProjectId
       preparedProjectId = null
-      setStage("idle")
-      setSuccessMessage("Arquivos recebidos. O processamento deste tipo de memorial será ativado em breve.")
-      setMemorialFile(null)
-      setPlantaFile(null)
-      if (memorialInputRef.current) memorialInputRef.current.value = ""
-      if (plantaInputRef.current) plantaInputRef.current.value = ""
+      setStage("done")
+      router.push(`/dashboard/projeto/${createdProjectId}`)
     } catch {
       if (preparedProjectId) await cancelPendingAzimuteUpload(preparedProjectId)
       setStage("error")

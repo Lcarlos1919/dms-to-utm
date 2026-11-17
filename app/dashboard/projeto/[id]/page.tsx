@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import type { ReactNode } from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { AlertTriangle, ArrowLeft } from "lucide-react"
@@ -12,12 +13,26 @@ import { isSupabaseConfigured } from "@/lib/supabase/config"
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/server"
 import { STALE_PROCESSING_MESSAGE, isStaleProcessing, staleProcessingCutoff } from "@/lib/project-status"
 import { linhaParaVertice } from "@/lib/topocad-db/mapeamento"
+import { AzimuteRevisao } from "@/components/dashboard/azimute-revisao"
+import { AzimuteAncora } from "@/components/dashboard/azimute-ancora"
+import { AzimuteResumo } from "@/components/dashboard/azimute-resumo"
+import { AZIMUTE_STATUS, azimuteDadosSchema, type AzimuteStatus } from "@/lib/azimute/tipos"
+
+const CAMPOS_BASE = "id,name,status,utm_zone,utm_hemisphere,datum,error_message,created_at,updated_at,is_closed,closure_error_m"
+const CAMPOS_AZIMUTE = "memorial_type,source_pdf_path,planta_path,azimute_status,azimute_dados"
 
 export const metadata: Metadata = { title: "Projeto — Vertix" }
 
-export default async function ProjetoPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjetoPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ etapa?: string }>
+}) {
   const userId = await requireUser()
   const { id } = await params
+  const { etapa } = await searchParams
 
   if (!isSupabaseConfigured()) {
     return <SetupNotice variables={["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"]} />
@@ -29,12 +44,19 @@ export default async function ProjetoPage({ params }: { params: Promise<{ id: st
 
   // RLS blocks direct reads of project_vertices; ownership is enforced by the user_id filter below.
   const supabase = createAdminClient()
-  const { data: project, error: projectError } = await supabase
+  let { data: project, error: projectError } = await supabase
     .from("projects")
-    .select("id,name,status,utm_zone,utm_hemisphere,datum,error_message,created_at,updated_at,is_closed,closure_error_m")
+    .select(`${CAMPOS_BASE},${CAMPOS_AZIMUTE}`)
     .eq("id", id)
     .eq("user_id", userId)
     .maybeSingle()
+
+  // Banco sem as colunas do memorial por azimute (SQL 005b/008 pendentes): mostra como coordenadas.
+  if (projectError && /memorial_type|planta_path|azimute_/.test(projectError.message)) {
+    const legado = await supabase.from("projects").select(CAMPOS_BASE).eq("id", id).eq("user_id", userId).maybeSingle()
+    project = legado.data ? { ...legado.data, memorial_type: "coordenadas", source_pdf_path: null, planta_path: null, azimute_status: null, azimute_dados: null } : null
+    projectError = legado.error
+  }
 
   if (projectError) {
     return (
@@ -62,6 +84,82 @@ export default async function ProjetoPage({ params }: { params: Promise<{ id: st
       .lt("updated_at", staleProcessingCutoff())
     project.status = "error"
     project.error_message = STALE_PROCESSING_MESSAGE
+  }
+
+  if (project.memorial_type === "azimute") {
+    const [memorialUrl, plantaUrl] = await Promise.all(
+      [project.source_pdf_path, project.planta_path].map(async (path: string | null) => {
+        if (!path) return null
+        const { data } = await supabase.storage.from("memoriais").createSignedUrl(path, 3600)
+        return data?.signedUrl ?? null
+      }),
+    )
+    const dados = azimuteDadosSchema.safeParse(project.azimute_dados)
+    const status = (AZIMUTE_STATUS as readonly string[]).includes(project.azimute_status) ? (project.azimute_status as AzimuteStatus) : "pendente"
+    const pronto = project.status === "ready"
+    const mostrarPronto = pronto && etapa !== "revisao" && etapa !== "ancora"
+    const mostrarAncora = !mostrarPronto && dados.success && etapa !== "revisao" && (etapa === "ancora" || status === "revisado")
+
+    let conteudo: ReactNode
+    if (mostrarPronto) {
+      const { data: linhas, error: erroVertices } = await supabase
+        .from("project_vertices")
+        .select("project_id,seq,code,lon_dms,lat_dms,lon_dec,lat_dec,altitude_m,vante_code,azimuth_dms,distance_m,confrontacao,easting,northing,edited")
+        .eq("project_id", id)
+        .order("seq", { ascending: true })
+      conteudo = (
+        <>
+          {dados.success && <AzimuteResumo projectId={project.id} dados={dados.data} />}
+          {erroVertices ? (
+            <p role="alert" className="text-sm text-red-400">Não foi possível carregar os vértices: {erroVertices.message}</p>
+          ) : (
+            <ProjectView
+              projectId={project.id}
+              initialVertices={(linhas ?? []).map(linhaParaVertice)}
+              initialZone={project.utm_zone}
+              initialHemisphere={project.utm_hemisphere}
+              initialDatum={project.datum}
+              initialClosed={project.is_closed ?? null}
+              initialClosureErrorM={project.closure_error_m === null ? null : Number(project.closure_error_m)}
+              canExport
+            />
+          )}
+        </>
+      )
+    } else if (mostrarAncora && dados.success) {
+      conteudo = <AzimuteAncora key={JSON.stringify(dados.data.candidatas ?? [])} projectId={project.id} dados={dados.data} pronto={pronto} />
+    } else {
+      conteudo = (
+        <AzimuteRevisao
+          key={dados.success ? `${dados.data.lidoEm}-${project.azimute_status}` : "sem-dados"}
+          projectId={project.id}
+          initialStatus={status}
+          initialDados={dados.success ? dados.data : null}
+          memorialUrl={memorialUrl}
+          plantaUrl={plantaUrl}
+          pronto={pronto}
+        />
+      )
+    }
+
+    return (
+      <div className="space-y-6">
+        <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-200">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Projetos
+        </Link>
+        <div>
+          <h1 className="font-display text-2xl font-semibold text-zinc-100">{project.name}</h1>
+          <p className="text-sm text-zinc-500">
+            Memorial por azimute · {statusLabels[project.status as ProjectStatus] ?? project.status} · criado em {formatDate(project.created_at)}
+          </p>
+        </div>
+        {project.error_message && (
+          <p role="alert" className="rounded-2xl bg-amber-500/10 p-4 text-sm text-amber-200">{project.error_message}</p>
+        )}
+        {conteudo}
+      </div>
+    )
   }
 
   const { data: rows, error: verticesError } = await supabase

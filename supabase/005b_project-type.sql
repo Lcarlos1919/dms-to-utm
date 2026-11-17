@@ -1,3 +1,5 @@
+-- 005b_project-type.sql (antes 005_project-type.sql; renomeado para não colidir com
+-- 005_vertices_codigo_repetido.sql). Idempotente. Rode depois do 005.
 begin;
 
 alter table public.projects
@@ -24,10 +26,7 @@ comment on column public.projects.hemisphere is
 comment on column public.projects.anchor_source is
   'Origem do ponto de amarração: base_fundiaria, manual ou mapa.';
 
-insert into public.feature_access (feature_key, label, free_enabled, pro_enabled)
-values
-  ('memorial_azimute', 'Memorial por azimute e distância', false, false),
-  ('export_kml', 'Exportação KML', true, true)
-on conflict (feature_key) do nothing;
+-- O acesso por plano (memorial_azimute, export_kml) fica em app_settings,
+-- chave 'feature_access', criada pelo 006_feature_access.sql.
 
 commit;

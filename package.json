@@ -7,7 +7,9 @@
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",
-    "test:kml": "node --experimental-strip-types --test lib/export/kml.test.mjs"
+    "test:kml": "node --experimental-strip-types --test lib/export/kml.test.mjs",
+    "test:azimute": "tsc -p tsconfig.vertix-test.json && node --test lib/vertix-core/vertix-core.test.mjs",
+    "test": "pnpm run test:kml && pnpm run test:azimute"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.10",
