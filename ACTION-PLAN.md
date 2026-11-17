@@ -48,6 +48,7 @@ Legenda: `[x]` feito · `[ ]` a fazer · ⚠️ bloqueia outras tarefas.
 - [x] Testes do motor: `pnpm run test:azimute` (12 casos).
 
 ### Validações registradas
+- [x] Revisão de 2026-11-17: `tsc`, build com checagem de tipos ligada, `test:kml` 8/8 e `test:azimute` 12/12.
 - [x] `pnpm exec tsc --noEmit`, `pnpm run build` e `pnpm run test:kml` — passaram em 2026-10-29.
 
 ---
@@ -88,7 +89,8 @@ Legenda: `[x]` feito · `[ ]` a fazer · ⚠️ bloqueia outras tarefas.
 
 ### Etapa 4 — Produto e administração (P2)
 
-- [ ] Decidir se proprietário e município serão digitados ou extraídos do memorial; depois criar coluna e preencher o KML.
+- [x] Município (e lote/gleba no XLSX) preenchido na exportação dos memoriais por azimute, a partir do cabeçalho lido.
+- [ ] Proprietário e município nos memoriais por coordenadas: decidir se serão digitados ou extraídos; depois criar coluna e preencher o KML.
 - [ ] Busca, filtros e paginação no painel admin.
 - [ ] Métricas de uso (memoriais por mês, erros de processamento, exportações).
 - [ ] Sincronização Clerk idempotente; decidir se organizações serão também donas de dados.

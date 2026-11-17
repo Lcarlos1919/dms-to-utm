@@ -66,7 +66,7 @@ O produto atende dois tipos de memorial:
 4. ~~Dois scripts `005`~~ — agora `005` e `005b`.
 5. Os SQL `005b`, `006`, `007` e `008` precisam estar aplicados no Supabase para o fluxo por azimute funcionar. A base fundiária (`fundiario_lotes`) precisa estar importada.
 6. O leitor de memoriais ainda não foi testado com memoriais reais. Faltam exemplos de cada formato usado pelos clientes.
-7. Proprietário e município não são armazenados; esses campos saem vazios no KML.
+7. O proprietário não é armazenado. O município só é preenchido no KML dos memoriais por azimute; nos memoriais por coordenadas ele ainda sai vazio.
 8. Cobrança real não está conectada; planos existem apenas no código.
 9. Nenhum teste com login real no navegador foi feito; o estado das migrações no Supabase remoto não foi confirmado.
 
