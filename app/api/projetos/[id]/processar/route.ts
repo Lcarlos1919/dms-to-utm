@@ -12,6 +12,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const { id } = await params
   const processed = await processMemorial(id, userId)
   if (!processed.ok) return erroApi(processed.status, processed.error, processed.message)
+  if ("azimute" in processed) {
+    return Response.json({ ok: true, tipo: "azimute", etapa: processed.etapa, mensagem: processed.message })
+  }
 
   const { data: project, error } = await createAdminClient()
     .from("projects")

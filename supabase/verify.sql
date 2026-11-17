@@ -37,3 +37,14 @@ order by column_name;
 
 -- 7) Legado (só existe se 002 foi aplicado): admins e tentativas
 select to_regclass('public.admin_users') as admin_users, to_regclass('public.admin_login_attempts') as admin_login_attempts;
+
+-- 8) Memorial por azimute (005b e 008): devem aparecer as 6 colunas
+select column_name, data_type from information_schema.columns
+where table_schema='public' and table_name='projects'
+  and column_name in ('memorial_type','planta_path','anchor_source','azimute_status','azimute_dados','epsg')
+order by column_name;
+
+-- 9) Base fundiária (007) e configurações (006): tabela, função e linhas de app_settings
+select to_regclass('public.fundiario_lotes') as fundiario_lotes,
+       to_regprocedure('public.buscar_lote(text,text,text,integer)') as buscar_lote,
+       (select count(*) from public.app_settings where key in ('feature_access','fundiario_config')) as linhas_config_esperado_2;

@@ -5,7 +5,6 @@ import { requireUser } from "@/lib/auth"
 import { createServerClient } from "@/lib/supabase/server"
 import { isSupabaseConfigured } from "@/lib/supabase/config"
 import { getUsageStatus } from "@/lib/usage"
-import { canUseFeature } from "@/lib/features"
 import { UsageCard } from "@/components/dashboard/usage-card"
 import { ProjectsTable, type ProjectRow } from "@/components/dashboard/projects-table"
 import { SetupNotice } from "@/components/setup-notice"
@@ -25,18 +24,17 @@ export default async function DashboardPage() {
   }
 
   const supabase = createServerClient()
-  const [projectResult, usage, canUseAzimute] = await Promise.all([
+  const [projectResult, usage] = await Promise.all([
     supabase
       .from("projects")
-      .select("id, name, status, area_m2, created_at, memorial_type")
+      .select("id, name, status, area_m2, created_at, memorial_type, azimute_status")
       .order("created_at", { ascending: false }),
     getUsageStatus(userId),
-    canUseFeature(userId, "memorial_azimute"),
   ])
 
   let projects: ProjectRow[] = []
   let error = projectResult.error
-  if (error?.message.toLowerCase().includes("memorial_type")) {
+  if (error && /memorial_type|azimute_status/i.test(error.message)) {
     const legacyProjectResult = await supabase
       .from("projects")
       .select("id, name, status, area_m2, created_at")
@@ -47,7 +45,7 @@ export default async function DashboardPage() {
     projects = (projectResult.data ?? []) as ProjectRow[]
   }
 
-  const canStartProject = usage.canCreate || canUseAzimute
+  const canStartProject = usage.canCreate
 
   return (
     <div className="space-y-8">

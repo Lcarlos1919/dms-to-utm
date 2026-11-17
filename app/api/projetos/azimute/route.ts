@@ -6,8 +6,10 @@ import { MAX_PDF_SIZE, sanitizePdfFileName, validatePdfBlob } from "@/lib/pdf-va
 import { limparProjetoAposFalhaDeCriacao } from "@/lib/projects/delete-project"
 import { createAdminClient } from "@/lib/supabase/server"
 import { getUsageStatus } from "@/lib/usage"
+import { processarAzimute } from "@/lib/azimute/processar"
 
 export const runtime = "nodejs"
+export const maxDuration = 60
 
 const projectNameSchema = z.string().trim().min(1).max(120)
 const memorialTypeSchema = z.enum(["coordenadas", "azimute"])
@@ -43,6 +45,9 @@ async function checkAzimuteAccess(userId: string) {
 
   if (!usage.canCreateMemorials) {
     return erroApi(403, "PERMISSAO_NEGADA", "A criação de memoriais está bloqueada para esta conta.")
+  }
+  if (!usage.canCreate) {
+    return erroApi(403, "COTA_EXCEDIDA", "Você atingiu o limite de memoriais do seu plano neste mês.")
   }
   if (!(await canUseFeature(userId, "memorial_azimute"))) {
     return erroApi(403, "FEATURE_BLOQUEADA", "O envio por azimute não está habilitado para este plano.")
@@ -194,8 +199,15 @@ export async function PUT(request: Request) {
     return erroApi(500, "ERRO_BANCO", "Não foi possível registrar o memorial enviado.")
   }
 
+  // Processa na hora: leitura, validação e posicionamento automático.
+  const processamento = await processarAzimute(body.data.projectId, userId, { reler: true })
   revalidatePath("/dashboard")
-  return Response.json({ ok: true, projectId: body.data.projectId }, { status: 201 })
+  return Response.json({
+    ok: true,
+    projectId: body.data.projectId,
+    etapa: processamento.ok ? processamento.etapa : "revisao",
+    mensagem: processamento.mensagem,
+  }, { status: 201 })
 }
 
 export async function DELETE(request: Request) {

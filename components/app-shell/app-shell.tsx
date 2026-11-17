@@ -48,7 +48,7 @@ export function AppShell({
           {topbarExtra}
           <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-100">Sair</Link>
         </header>
-        <main className="flex-1 p-6 md:p-8">{children}</main>
+        <main className="flex-1 overflow-x-clip p-6 md:p-8">{children}</main>
       </div>
     </div>
   )

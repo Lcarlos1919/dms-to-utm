@@ -39,7 +39,7 @@ export default async function NovoProjetoPage() {
       </div>
     )
   }
-  if (!usage.canCreate && !canUseAzimute) redirect("/dashboard/planos")
+  if (!usage.canCreate) redirect("/dashboard/planos")
 
   return (
     <div className="space-y-6">

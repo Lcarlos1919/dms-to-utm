@@ -10,9 +10,10 @@ Leia, nesta ordem:
 
 1. `README.md`
 2. `ROADMAP.md`
-3. `ACTION-PLAN.md`
-4. `package.json`
-5. os arquivos diretamente relacionados à tarefa
+3. `TIMELINE.md`
+4. `ACTION-PLAN.md`
+5. `package.json`
+6. os arquivos diretamente relacionados à tarefa
 
 Depois confira `git status --short --branch` e identifique o framework/runtime. A documentação é um mapa, não prova que o código ou o banco remoto estejam no estado descrito; confira ambos.
 
@@ -84,7 +85,7 @@ Depois confira `git status --short --branch` e identifique o framework/runtime. 
 5. Rode primeiro o check mais estreito; depois build/lint/testes aplicáveis.
 6. Para UI, valide no navegador; se a autenticação bloquear o teste, registre a limitação.
 7. Revise diff, arquivos alterados e riscos.
-8. Atualize `ROADMAP.md` e/ou `ACTION-PLAN.md` quando o estado do projeto mudar.
+8. Atualize `ROADMAP.md`, `TIMELINE.md` e/ou `ACTION-PLAN.md` quando o estado do projeto mudar.
 9. Sincronize Git ao finalizar.
 
 ## Padrões de qualidade

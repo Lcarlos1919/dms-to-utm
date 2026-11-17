@@ -5,6 +5,7 @@ import { erroApi, identidadeApi, nomeArquivo } from "@/lib/api/projetos"
 import { canUseFeature } from "@/lib/features"
 import { gerarDxf, gerarXlsx } from "@/lib/topocad"
 import { crsDoProjeto, linhaParaVertice } from "@/lib/topocad-db/mapeamento"
+import { azimuteDadosSchema } from "@/lib/azimute/tipos"
 
 export const runtime = "nodejs"
 
@@ -35,6 +36,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return erroApi(409, "PROJETO_NAO_PRONTO", "Processe o memorial antes de exportar.")
   }
 
+  // Memorial por azimute: o cabeçalho lido do memorial traz município, lote e gleba.
+  // Consulta separada para não quebrar a exportação em bancos sem a coluna (SQL 008 pendente).
+  const { data: extra } = await db.from("projects").select("azimute_dados").eq("id", id).eq("user_id", userId).maybeSingle()
+  const cab = azimuteDadosSchema.safeParse(extra?.azimute_dados).data?.cabecalho
+  const municipio = cab?.municipio ? `${cab.municipio}${cab.uf ? `/${cab.uf}` : ""}` : ""
+
   const { data: rows, error: verticesError } = await db
     .from("project_vertices")
     .select("project_id,seq,code,lon_dms,lat_dms,lon_dec,lat_dec,altitude_m,vante_code,azimuth_dms,distance_m,confrontacao,easting,northing,edited")
@@ -63,7 +70,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         metadata: {
           propertyName: projeto.name,
           owner: "",
-          municipality: "",
+          municipality: municipio,
           areaHa: Number(projeto.area_m2 ?? 0) / 10000,
           perimeterM: Number(projeto.perimeter_m ?? 0),
         },
@@ -98,6 +105,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     ["Projeto", projeto.name],
     ["Área (m²)", Number(projeto.area_m2 ?? 0)],
     ["Perímetro (m)", Number(projeto.perimeter_m ?? 0)],
+    ...(municipio ? [["Município", municipio] as [string, string]] : []),
+    ...(cab?.lote ? [["Lote", cab.lote] as [string, string]] : []),
+    ...(cab?.gleba ? [["Gleba", cab.gleba] as [string, string]] : []),
   ])
   return new Response(new Uint8Array(bytes), {
     headers: {

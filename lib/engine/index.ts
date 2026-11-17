@@ -4,11 +4,15 @@ import { isStaleProcessing } from "@/lib/project-status"
 import { createAdminClient } from "@/lib/supabase/server"
 import { getUsageStatus, incrementUsage } from "@/lib/usage"
 import { ErroApp, extrairItensDoPdf } from "@/lib/pdf/extrair-itens"
-import { processarPaginas, type ResultadoMotor } from "@/lib/topocad"
+import { processarPaginas, reconstruirLinhas, type ResultadoMotor } from "@/lib/topocad"
+import { canUseFeature } from "@/lib/features"
+import { processarAzimute, type EtapaAzimute } from "@/lib/azimute/processar"
+import { lerMemorial } from "@/lib/vertix-core/memorial"
 import { projetoDoResultado, verticeParaLinha } from "@/lib/topocad-db/mapeamento"
 
 export type ProcessResult =
   | { ok: true; result: Extract<ResultadoMotor, { ok: true }> }
+  | { ok: true; azimute: true; etapa: EtapaAzimute; message: string }
   | { ok: false; error: string; message: string; status: number }
 
 class MemorialProcessingError extends Error {
@@ -24,12 +28,24 @@ class MemorialProcessingError extends Error {
 
 export async function processMemorial(projectId: string, userId: string): Promise<ProcessResult> {
   const db = createAdminClient()
-  const { data: project, error: projectError } = await db
+  let { data: project, error: projectError } = await db
     .from("projects")
-    .select("id,source_pdf_path,status,updated_at")
+    .select("id,source_pdf_path,status,updated_at,memorial_type")
     .eq("id", projectId)
     .eq("user_id", userId)
     .maybeSingle()
+
+  // Banco sem a coluna memorial_type (SQL 005b ainda não aplicado): segue como coordenadas.
+  if (projectError?.message.toLowerCase().includes("memorial_type")) {
+    const legado = await db
+      .from("projects")
+      .select("id,source_pdf_path,status,updated_at")
+      .eq("id", projectId)
+      .eq("user_id", userId)
+      .maybeSingle()
+    project = legado.data ? { ...legado.data, memorial_type: "coordenadas" } : null
+    projectError = legado.error
+  }
 
   if (projectError) {
     return { ok: false, error: "ERRO_BANCO", message: "Não foi possível carregar o projeto.", status: 500 }
@@ -37,6 +53,17 @@ export async function processMemorial(projectId: string, userId: string): Promis
 
   if (!project) {
     return { ok: false, error: "PROJETO_NAO_ENCONTRADO", message: "Projeto não encontrado.", status: 404 }
+  }
+
+  // Memorial por azimute tem pipeline próprio (leitura, validação e posicionamento).
+  if (project.memorial_type === "azimute") {
+    if (!(await canUseFeature(userId, "memorial_azimute"))) {
+      return { ok: false, error: "FEATURE_BLOQUEADA", message: "O memorial por azimute não está habilitado para este plano.", status: 403 }
+    }
+    const r = await processarAzimute(projectId, userId, { reler: true })
+    return r.ok
+      ? { ok: true, azimute: true, etapa: r.etapa, message: r.mensagem }
+      : { ok: false, error: r.codigo, message: r.mensagem, status: r.status }
   }
 
   const isStale = isStaleProcessing(project.status, project.updated_at)
@@ -102,6 +129,27 @@ export async function processMemorial(projectId: string, userId: string): Promis
 
     const pages = await extrairItensDoPdf(new Uint8Array(await file.arrayBuffer()))
     const result = processarPaginas(pages)
+
+    // Sem coordenadas, mas com azimutes e distâncias: é um memorial por azimute.
+    if (!result.ok && result.erro.codigo === "NENHUM_VERTICE") {
+      const texto = pages.map((p) => reconstruirLinhas(p).join("\n")).join("\n")
+      if (lerMemorial(texto).segmentos.length >= 3 && (await canUseFeature(userId, "memorial_azimute"))) {
+        const { data: convertido } = await db
+          .from("projects")
+          .update({ memorial_type: "azimute", status: "draft", error_code: null, error_message: null })
+          .eq("id", projectId)
+          .eq("user_id", userId)
+          .eq("status", "processing")
+          .select("id")
+          .maybeSingle()
+        if (convertido) {
+          const r = await processarAzimute(projectId, userId, { reler: true })
+          return r.ok
+            ? { ok: true, azimute: true, etapa: r.etapa, message: r.mensagem }
+            : { ok: false, error: r.codigo, message: r.mensagem, status: r.status }
+        }
+      }
+    }
 
     if (!result.ok) {
       throw new MemorialProcessingError(result.erro.codigo, result.erro.mensagem)

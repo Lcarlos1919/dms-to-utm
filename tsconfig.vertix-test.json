@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "skipLibCheck": true,
+    "outDir": ".test-build/vertix-core",
+    "rootDir": "lib/vertix-core",
+    "declaration": false,
+    "sourceMap": false
+  },
+  "include": ["lib/vertix-core/*.ts"]
+}
