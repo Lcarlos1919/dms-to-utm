@@ -194,7 +194,7 @@ export function UploadDropzone({
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (busy || !memorialFile || !name.trim()) return
-    if (memorialType === "coordenadas" && !canCreateCoordinates) return
+    if (!canCreateCoordinates) return
     if (memorialType === "azimute" && (!canUseAzimute || !plantaFile)) return
 
     setError(null)
@@ -367,9 +367,9 @@ export function UploadDropzone({
         </FieldDescription>
       </FieldSet>
 
-      {!canCreateCoordinates && memorialType === "coordenadas" && (
+      {!canCreateCoordinates && (
         <p role="status" className="text-sm text-zinc-400">
-          A cota mensal foi atingida para memoriais com coordenadas. Escolha o tipo Azimute, se disponível, ou{" "}
+          A cota mensal de memoriais foi atingida. Para continuar,{" "}
           <Link href="/dashboard/planos" className="text-zinc-100 underline underline-offset-4">consulte os planos</Link>.
         </p>
       )}
@@ -454,12 +454,12 @@ export function UploadDropzone({
           !memorialFile ||
           !name.trim() ||
           busy ||
-          (memorialType === "coordenadas" && !canCreateCoordinates) ||
+          !canCreateCoordinates ||
           (memorialType === "azimute" && (!canUseAzimute || !plantaFile))
         }
         className="rounded-full bg-zinc-100 px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:pointer-events-none disabled:opacity-50"
       >
-        {memorialType === "azimute" ? "Enviar arquivos" : "Processar memorial"}
+        {memorialType === "azimute" ? "Enviar e processar" : "Processar memorial"}
       </button>
     </form>
   )

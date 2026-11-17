@@ -5,10 +5,10 @@ import { Badge } from "@/components/ui/badge"
 import type { AzimuteDados } from "@/lib/azimute/tipos"
 
 const ORIGEM: Record<string, string> = {
-  memorial: "coordenada informada no memorial",
-  base_fundiaria: "encaixe no lote da base fundiária",
-  manual: "coordenada digitada",
-  mapa: "ponto marcado no mapa",
+  memorial: "pela coordenada informada no memorial",
+  base_fundiaria: "pelo encaixe no lote da base fundiária",
+  manual: "pela coordenada digitada",
+  mapa: "pelo ponto marcado no mapa",
 }
 
 /** Cartão do memorial por azimute já pronto: de onde veio o posicionamento e atalhos para refazer. */
@@ -25,7 +25,7 @@ export function AzimuteResumo({ projectId, dados }: { projectId: string; dados: 
             </p>
             {a && (
               <p className="text-zinc-400">
-                Vértice {a.vertice} posicionado pela {ORIGEM[a.fonte] ?? a.fonte} · fuso {dados.fuso}{dados.hemisferio} · {dados.segmentos.length} segmentos.
+                Vértice {a.vertice} posicionado {ORIGEM[a.fonte] ?? a.fonte} · fuso {dados.fuso}{dados.hemisferio} · {dados.segmentos.length} segmentos.
                 {a.detalhe ? ` ${a.detalhe}` : ""}
               </p>
             )}

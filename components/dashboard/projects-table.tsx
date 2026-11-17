@@ -18,6 +18,17 @@ export type ProjectRow = {
   area_m2: number | null
   created_at: string
   memorial_type?: string | null
+  azimute_status?: string | null
+}
+
+/** Status mostrado na lista: memoriais por azimute dizem o que falta para ficarem prontos. */
+function rotuloStatus(project: ProjectRow): string {
+  if (project.memorial_type === "azimute" && project.status !== "ready" && project.status !== "processing") {
+    if (project.azimute_status === "revisado") return "Falta o ponto de partida"
+    if (project.azimute_status === "lido" || project.azimute_status === "erro_leitura") return "Revisar tabela"
+    if (project.azimute_status === "pendente") return "Aguardando leitura"
+  }
+  return statusLabels[project.status] ?? project.status
 }
 
 const projectGrid = "sm:grid-cols-[minmax(0,2fr)_minmax(110px,1fr)_minmax(110px,1fr)_minmax(130px,1fr)]"
@@ -116,7 +127,7 @@ export function ProjectsTable({ projects, canDeleteMemorials = false }: { projec
                 </div>
                 <div>
                   <span className="mb-1 block text-xs text-zinc-500 sm:hidden">Status</span>
-                  <p className="text-sm text-zinc-400">{statusLabels[project.status] ?? project.status}</p>
+                  <p className="text-sm text-zinc-400">{rotuloStatus(project)}</p>
                 </div>
                 <div>
                   <span className="mb-1 block text-xs text-zinc-500 sm:hidden">Área</span>

@@ -301,6 +301,6 @@ export async function finalizarAzimute(
 
   revalidatePath(`/dashboard/projeto/${projectId}`)
   revalidatePath("/dashboard")
-  const origem = a.fonte === "memorial" ? "coordenada do memorial" : a.fonte === "base_fundiaria" ? "base fundiária" : a.fonte === "mapa" ? "ponto marcado no mapa" : "coordenada digitada"
-  return { ok: true, etapa: "pronto", mensagem: `Memorial pronto. Posicionado pela ${origem}.` }
+  const origem = a.fonte === "memorial" ? "pela coordenada do memorial" : a.fonte === "base_fundiaria" ? "pela base fundiária" : a.fonte === "mapa" ? "pelo ponto marcado no mapa" : "pela coordenada digitada"
+  return { ok: true, etapa: "pronto", mensagem: `Memorial pronto. Posicionado ${origem}.` }
 }

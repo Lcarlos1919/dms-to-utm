@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { num } from "@/lib/vertix-core/angulos"
 import type { Segmento } from "@/lib/vertix-core/memorial"
-import { conferirIdentificacao, lerAnguloLivre, relatorioPoligonal, textoAzimute, validarSegmentos, type Check } from "@/lib/vertix-core/revisao"
+import { conferirIdentificacao, lerAnguloLivre, relatorioPoligonal, textoAzimute, textoPrecisao, validarSegmentos, type Check } from "@/lib/vertix-core/revisao"
 import { FUSO_PADRAO, type AzimuteDados, type AzimuteStatus } from "@/lib/azimute/tipos"
 
 interface Linha {
@@ -304,11 +304,11 @@ export function AzimuteRevisao({
             )}
             {problemasGerais.length > 0 && <p className="text-sm text-red-400">{problemasGerais.join(" ")}</p>}
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-sm">
+              <table className="w-full min-w-[720px] text-sm">
                 <thead>
                   <tr className="text-left text-xs text-zinc-500">
                     <th className="w-8 pb-2">#</th><th className="pb-2 pr-2">De</th><th className="pb-2 pr-2">Para</th>
-                    <th className="pb-2 pr-2">Azimute ou rumo</th><th className="pb-2 pr-2">Distância (m)</th><th className="pb-2 pr-2">Confrontante</th><th className="pb-2" />
+                    <th className="min-w-[150px] pb-2 pr-2">Azimute ou rumo</th><th className="pb-2 pr-2">Distância (m)</th><th className="pb-2 pr-2">Confrontante</th><th className="pb-2" />
                   </tr>
                 </thead>
                 <tbody>
@@ -398,7 +398,7 @@ export function AzimuteRevisao({
               <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                 <div><dt className={rotulo}>Perímetro</dt><dd className="text-zinc-100">{relatorio.perimetroM.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m</dd></div>
                 <div><dt className={rotulo}>Fechamento</dt><dd className="text-zinc-100">{relatorio.fechamentoM.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m</dd></div>
-                <div><dt className={rotulo}>Precisão</dt><dd className="text-zinc-100">1:{Math.round(relatorio.precisao).toLocaleString("pt-BR")}</dd></div>
+                <div><dt className={rotulo}>Precisão</dt><dd className="break-words text-zinc-100">{textoPrecisao(relatorio.precisao)}</dd></div>
                 <div><dt className={rotulo}>Área</dt><dd className="text-zinc-100">{relatorio.areaHa.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ha</dd></div>
               </dl>
             )}

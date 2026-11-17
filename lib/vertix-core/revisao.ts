@@ -54,6 +54,12 @@ export interface Relatorio {
   situacao: 'ok' | 'atencao' | 'erro';
 }
 
+/** "1:26.000"; poligonais que fecham (quase) exatamente viram "exata" em vez de 1:10^15. */
+export function textoPrecisao(precisao: number): string {
+  if (!Number.isFinite(precisao) || precisao >= 1_000_000) return 'exata (melhor que 1:1.000.000)';
+  return `1:${Math.round(precisao).toLocaleString('pt-BR')}`;
+}
+
 const pct = (a: number, b: number) => (Math.abs(a - b) / b) * 100;
 const f2 = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -65,7 +71,7 @@ export function relatorioPoligonal(segs: Segmento[], memorial: Declarados, plant
   checks.push({
     id: 'fechamento', rotulo: 'Fechamento da poligonal',
     status: prec >= 10000 ? 'ok' : prec >= 5000 ? 'atencao' : 'erro',
-    detalhe: `Erro de ${f2(pol.fechamentoLinear)} m em ${f2(pol.perimetro)} m (1:${Math.round(prec).toLocaleString('pt-BR')}).`,
+    detalhe: `Erro de ${f2(pol.fechamentoLinear)} m em ${f2(pol.perimetro)} m (${textoPrecisao(prec)}).`,
   });
   const comp = (id: string, rotulo: string, calc: number, ref: number | undefined, unid: string, tolOk: number, tolAt: number, fonte: string): Check =>
     ref == null
