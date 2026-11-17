@@ -1,6 +1,6 @@
 # Linha do tempo do Vertix
 
-**Última revisão:** 2026-11-13
+**Última revisão:** 2026-11-17
 **Fonte:** histórico Git do `main` (commit `6f26ecd`). Os números de PR das fases 1 e 2 são de repositórios anteriores (`luiz1819/…` e `luiz1900/…`); a partir da fase 3 são de `Lcarlos1919/dms-to-utm`.
 
 Documentos irmãos: `ROADMAP.md` (visão e fases) e `ACTION-PLAN.md` (o que falta fazer).
@@ -16,6 +16,7 @@ Documentos irmãos: `ROADMAP.md` (visão e fases) e `ACTION-PLAN.md` (o que falt
 | 25–29/out | Segurança e KML | Admin finalizado, limites de uso, exclusão com permissão, exportação KML |
 | 03–12/nov | Azimute | Tipo de memorial azimute, Vertix Core, acesso por plano, leitura dos PDFs (D1) |
 | 13/nov | Regressão | Restauração do v0 apagou a entrega D1 |
+| 17/nov | Azimute completo | D1 restaurada, D2–D5 entregues, memorial pronto automático |
 
 ---
 
@@ -100,14 +101,20 @@ Documentos irmãos: `ROADMAP.md` (visão e fases) e `ACTION-PLAN.md` (o que falt
 
 - `6f26ecd` "Restored: Merge pull request #13" (v0). **Apagou os 11 arquivos do PR #14.** A entrega D1 continua recuperável a partir do commit `255657b`.
 
+### 17/nov — Memorial por azimute completo
+
+- D1 restaurada a partir de `255657b`; SQL `005_project-type` corrigido e renomeado para `005b`.
+- Pipeline automático: leitura, conferência e posicionamento pela coordenada do memorial ou pela base fundiária. O memorial sai pronto, com vértices, área, perímetro e exportação.
+- D3: ponto de partida pela base, digitado ou no mapa, quando o automático não é seguro.
+- Leitor de memorial com formatos alternativos; testes `pnpm run test:azimute`.
+
 ---
 
 ## Próximos marcos
 
 As datas não são estimadas. Ordem prevista em `ACTION-PLAN.md`:
 
-1. Restaurar D1 e corrigir os SQL.
-2. Confirmar banco e segurança no ambiente remoto e fazer o teste com login.
-3. Azimute D2 a D5.
-4. Testes do motor e validação com memoriais reais.
-5. Metadados, admin e cobrança.
+1. Aplicar os SQL `005b`–`008` no Supabase e fazer o teste com login.
+2. D6: validar o leitor com os memoriais de exemplo e ajustar formatos.
+3. Importador da base fundiária no repositório.
+4. Metadados, admin e cobrança.

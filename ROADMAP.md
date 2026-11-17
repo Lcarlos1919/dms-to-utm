@@ -1,7 +1,7 @@
 # Roadmap do Vertix
 
-**Última revisão:** 2026-11-13
-**Base do código:** `6f26ecd` (`main`, 2026-11-13)
+**Última revisão:** 2026-11-17
+**Base do código:** branch `claude/confident-pascal-cy49z6` (sobre `6f26ecd`)
 
 Documentos irmãos:
 
@@ -19,7 +19,7 @@ O produto atende dois tipos de memorial:
 | Tipo | Entrada | Estado |
 | --- | --- | --- |
 | **Coordenadas** | Memorial com coordenadas UTM ou geográficas de cada vértice | Fluxo completo entregue |
-| **Azimute e distância** | Memorial sem coordenadas + PDF da planta; precisa de um ponto de amarração (base fundiária, manual ou mapa) | Em construção |
+| **Azimute e distância** | Memorial sem coordenadas + PDF da planta; precisa de um ponto de amarração (memorial, base fundiária, digitado ou mapa) | Fluxo completo no código; falta validar com memoriais reais |
 
 `TopoCAD` (`lib/topocad`) é o motor do fluxo por coordenadas. `Vertix Core` (`lib/vertix-core`) é o motor do fluxo por azimute. A marca do produto é Vertix.
 
@@ -52,17 +52,23 @@ O produto atende dois tipos de memorial:
 - Planos `free`/`pro`, limite mensal gratuito configurável (padrão 3) e créditos bônus.
 - Campo `memorial_type` (coordenadas/azimute) e upload de memorial + planta para o tipo azimute.
 - Acesso por ferramenta e por plano (`memorial_azimute`, `export_kml`), configurável no admin.
-- Biblioteca `lib/vertix-core` (cálculos do fluxo azimute e busca de lote na base fundiária/GeoPortal SEDAM-RO).
+- Biblioteca `lib/vertix-core` (cálculos do fluxo azimute e busca de lote na base fundiária/GeoPortal SEDAM-RO), agora ligada ao app.
+- **Memorial por azimute pronto automaticamente** (`lib/azimute/processar.ts`): lê memorial e planta, confere a tabela e posiciona o lote sozinho, pela coordenada escrita no memorial ou pelo encaixe no lote da base fundiária. Grava vértices, área, perímetro e EPSG e aplica a compensação de Bowditch.
+- **Ponto de partida manual (D3)** quando o posicionamento automático não é seguro: escolher na base, digitar UTM ou lat/long, ou clicar no mapa de satélite, com pré-visualização.
+- Leitor de memorial tolerante a vários formatos: azimute antes ou depois do vértice de destino, rumos, tabela De/Para, coordenada inicial UTM ou geográfica, fuso ou meridiano central.
+- Memorial enviado como "coordenadas" que só tem azimutes passa sozinho para o fluxo por azimute.
 
 ### Problemas conhecidos
 
-1. **Entrega D1 do azimute foi apagada.** O commit `6f26ecd` ("Restored: Merge pull request #13", feito pelo v0) removeu os 11 arquivos do PR #14 (`255657b`): leitura dos PDFs, tela de revisão da tabela de segmentos e os SQL `006`, `007`, `007b` e `008`.
-2. **`lib/vertix-core` não é usada por nenhum arquivo** do app. O código existe, mas ainda não está ligado a nenhuma rota ou tela.
-3. **`supabase/005_project-type.sql` vai falhar.** Ele insere em `public.feature_access`, uma tabela que não existe. O código lê essa configuração de `app_settings` (chave `feature_access`), que era criada pelo `006` removido.
-4. **Dois arquivos com número `005`** em `supabase/` (`005_project-type.sql` e `005_vertices_codigo_repetido.sql`), o que confunde a ordem de execução.
-5. Proprietário e município não são armazenados; esses campos saem vazios no KML.
-6. Cobrança real não está conectada; planos existem apenas no código.
-7. Nenhum teste com login real no navegador foi feito; o estado das migrações no Supabase remoto não foi confirmado.
+1. ~~Entrega D1 apagada pelo commit `6f26ecd`~~ — restaurada.
+2. ~~`lib/vertix-core` sem uso~~ — ligada ao pipeline do azimute.
+3. ~~`005_project-type.sql` inserindo em tabela inexistente~~ — corrigido e renomeado para `005b_project-type.sql`.
+4. ~~Dois scripts `005`~~ — agora `005` e `005b`.
+5. Os SQL `005b`, `006`, `007` e `008` precisam estar aplicados no Supabase para o fluxo por azimute funcionar. A base fundiária (`fundiario_lotes`) precisa estar importada.
+6. O leitor de memoriais ainda não foi testado com memoriais reais. Faltam exemplos de cada formato usado pelos clientes.
+7. Proprietário e município não são armazenados; esses campos saem vazios no KML.
+8. Cobrança real não está conectada; planos existem apenas no código.
+9. Nenhum teste com login real no navegador foi feito; o estado das migrações no Supabase remoto não foi confirmado.
 
 ## 4. Fases
 
@@ -76,11 +82,12 @@ Terminar o segundo tipo de memorial, em etapas:
 
 | Etapa | Entrega |
 | --- | --- |
-| D1 | Leitura dos PDFs (memorial + planta) e tela de revisão da tabela de segmentos — *feita, precisa ser restaurada* |
-| D2 | Base fundiária: importar lotes da SEDAM/RO para `fundiario_lotes` e buscar o lote do projeto (banco + GeoPortal) |
-| D3 | Ponto de amarração: escolher âncora pela base fundiária, por digitação manual ou clicando no mapa |
-| D4 | Cálculo da poligonal a partir de azimutes e distâncias, com fechamento, área e comparação com a área oficial |
-| D5 | Vértices gravados no projeto, mapa, edição e exportação DXF/XLSX/KML iguais ao fluxo por coordenadas |
+| D1 | Leitura dos PDFs (memorial + planta) e tela de revisão da tabela de segmentos — **feita (restaurada)** |
+| D2 | Busca do lote na base fundiária (Supabase + GeoPortal) e encaixe automático da poligonal — **feita** (falta só um importador da base no repositório) |
+| D3 | Ponto de partida manual: pela base, digitado ou clicando no mapa; só aparece quando o automático não é seguro — **feita** |
+| D4 | Poligonal a partir de azimutes e distâncias, com compensação de Bowditch, fechamento e área — **feita** |
+| D5 | Vértices gravados no projeto, mapa, edição e exportação DXF/XLSX/KML iguais ao fluxo por coordenadas — **feita** |
+| D6 | Validação com memoriais reais de todos os formatos e ajustes no leitor — **próxima** |
 
 ### Fase 3 — Qualidade do motor geoespacial (P1)
 

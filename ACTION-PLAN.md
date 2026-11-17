@@ -1,7 +1,7 @@
 # Plano de ação do Vertix
 
-**Última revisão:** 2026-11-13
-**Base do código:** `6f26ecd` (`main`)
+**Última revisão:** 2026-11-17
+**Base do código:** branch `claude/confident-pascal-cy49z6`
 
 Documentos irmãos: `ROADMAP.md` (visão e fases) e `TIMELINE.md` (histórico com commits).
 
@@ -38,7 +38,14 @@ Legenda: `[x]` feito · `[ ]` a fazer · ⚠️ bloqueia outras tarefas.
 ### Fluxo por azimute (parcial)
 - [x] Campo `memorial_type` e upload de memorial + planta.
 - [x] Biblioteca `lib/vertix-core` (ângulos, poligonal, âncora, lote, memorial, base fundiária).
-- [x] D1 — leitura dos PDFs e tela de revisão (commit `255657b`). **Apagada depois; ver tarefa 1.1.**
+- [x] D1 — leitura dos PDFs e tela de revisão (restaurada do commit `255657b`).
+- [x] D2 — busca do lote na base fundiária (Supabase + GeoPortal) e encaixe automático.
+- [x] D3 — ponto de partida pela base, digitado (UTM ou lat/long) ou clicado no mapa.
+- [x] D4 — poligonal com compensação de Bowditch, fechamento, área e perímetro.
+- [x] D5 — vértices gravados; mapa, edição e exportação iguais ao fluxo por coordenadas.
+- [x] Pipeline automático: ao enviar, o memorial sai **pronto** quando há coordenada no texto ou encaixe seguro no lote.
+- [x] Leitor tolerante a vários formatos; memorial enviado como "coordenadas" sem coordenadas passa para o fluxo por azimute.
+- [x] Testes do motor: `pnpm run test:azimute` (12 casos).
 
 ### Validações registradas
 - [x] `pnpm exec tsc --noEmit`, `pnpm run build` e `pnpm run test:kml` — passaram em 2026-10-29.
@@ -49,24 +56,27 @@ Legenda: `[x]` feito · `[ ]` a fazer · ⚠️ bloqueia outras tarefas.
 
 ### Etapa 1 — Estabilizar (P0) ⚠️
 
-- [ ] **1.1** Restaurar os 11 arquivos do PR #14 a partir de `255657b` em um branch, conferir com `tsc` e build e abrir PR.
+- [x] **1.1** Restaurar os 11 arquivos do PR #14 a partir de `255657b` em um branch, conferir com `tsc` e build e abrir PR.
   - `lib/azimute/`, `lib/vertix-core/planta.ts`, `lib/vertix-core/revisao.ts`
   - `app/api/projetos/[id]/azimute/route.ts`, `components/dashboard/azimute-revisao.tsx`, ajuste em `app/dashboard/projeto/[id]/page.tsx`
   - `supabase/006_feature_access.sql`, `007_base_fundiaria.sql`, `007b_verificacao.sql`, `008_azimute_dados.sql`
-- [ ] **1.2** Corrigir `supabase/005_project-type.sql`: remover o `insert into public.feature_access` (tabela inexistente); a configuração fica em `app_settings`, criada pelo `006`.
-- [ ] **1.3** Renumerar os dois `005` para deixar a ordem de execução sem ambiguidade e atualizar `verify.sql`.
-- [ ] **1.4** No Supabase autorizado, listar quais scripts já foram aplicados, aplicar os que faltam na ordem e rodar `verify.sql`.
+- [x] **1.2** Corrigir `supabase/005_project-type.sql` (agora `005b_project-type.sql`): remover o `insert into public.feature_access` (tabela inexistente); a configuração fica em `app_settings`, criada pelo `006`.
+- [x] **1.3** Renumerar os dois `005` para deixar a ordem de execução sem ambiguidade e atualizar `verify.sql`.
+- [ ] **1.4** No Supabase autorizado, aplicar na ordem os que faltam (`005b`, `006`, `007`, `008`), conferir a base fundiária com `007b_verificacao.sql` e rodar `verify.sql` (seções 8 e 9 cobrem o azimute).
 - [ ] **1.5** Conferir RLS, Storage privado, isolamento por `user_id`, webhook Clerk e permissões de staff em Preview.
 - [ ] **1.6** Teste com login real: usuário comum e staff, criar/processar/editar/exportar projeto, acesso negado e sessão expirada, desktop e celular.
 - [ ] **1.7** Combinar uma regra para o v0: antes de "restaurar" ou fazer merge, comparar com o `main` atual.
 
 ### Etapa 2 — Fluxo por azimute (P1)
 
-- [ ] **D2** Importador da base fundiária SEDAM/RO para `fundiario_lotes`; ligar `lib/vertix-core/fundiario.ts` a uma rota de busca (banco + GeoPortal, com `fundiario_config`).
-- [ ] **D3** Tela de ponto de amarração: escolher lote da base, digitar coordenada ou clicar no mapa; gravar `anchor_source`, datum, fuso e hemisfério.
-- [ ] **D4** Calcular a poligonal com `lib/vertix-core` (ângulos, poligonal, lote): fechamento, área, comparação com a área oficial e avisos.
-- [ ] **D5** Gravar os vértices em `project_vertices` e reutilizar mapa, edição e exportação DXF/XLSX/KML.
-- [ ] Liberar `memorial_azimute` para os planos desejados no admin quando D5 estiver validado.
+- [x] D2 — busca do lote e encaixe automático (`lib/azimute/base.ts`).
+- [x] D3 — tela do ponto de partida (`components/dashboard/azimute-ancora.tsx`).
+- [x] D4 — poligonal compensada (`lib/vertix-core/montagem.ts`).
+- [x] D5 — gravação do projeto pronto (`lib/azimute/processar.ts`).
+- [ ] **D6** Receber os memoriais de exemplo, rodar cada um pelo leitor e ajustar os formatos que falharem; transformar cada exemplo anonimizado em teste.
+- [ ] Adicionar ao repositório o importador da base SEDAM para `fundiario_lotes` (hoje a base é importada fora do repositório).
+- [ ] Testar no navegador, com login, o envio, a revisão, o ponto de partida (base, digitado, mapa) e as exportações.
+- [ ] Liberar `memorial_azimute` para os planos desejados no admin quando D6 estiver validado.
 
 ### Etapa 3 — Qualidade do motor (P1)
 
