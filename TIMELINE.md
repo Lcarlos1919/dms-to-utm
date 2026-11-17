@@ -108,6 +108,14 @@ Documentos irmãos: `ROADMAP.md` (visão e fases) e `ACTION-PLAN.md` (o que falt
 - D3: ponto de partida pela base, digitado ou no mapa, quando o automático não é seguro.
 - Leitor de memorial com formatos alternativos; testes `pnpm run test:azimute`.
 
+### 17/nov — Deploy e revisão
+
+- Revisão da entrega do azimute: precisão exibida como "exata", textos, rolagem horizontal do painel, cota mensal para os dois tipos.
+- Build volta a barrar erros de tipo (`ignoreBuildErrors: false`).
+- Município, lote e gleba do memorial por azimute no KML e no XLSX.
+- PR #22 integrado ao `main` (`15e7750`), com deploy em produção pela Vercel.
+- Testes do motor de coordenadas (`pnpm run test:topocad`).
+
 ---
 
 ## Próximos marcos

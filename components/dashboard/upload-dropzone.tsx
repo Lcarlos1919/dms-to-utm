@@ -357,13 +357,15 @@ export function UploadDropzone({
               <span className="font-medium text-zinc-100">Memorial com azimute e distância</span>
               <span className="text-sm font-normal text-zinc-500">Sem coordenadas; precisa do memorial e da planta</span>
             </span>
-            {!canUseAzimute && <Badge variant="outline" className="shrink-0 border-zinc-700 text-zinc-500">Em breve</Badge>}
+            {!canUseAzimute && <Badge variant="outline" className="shrink-0 border-zinc-700 text-zinc-500">Fora do seu plano</Badge>}
           </ToggleGroupItem>
         </ToggleGroup>
         <FieldDescription aria-live="polite" className="text-zinc-500">
           {memorialType === "coordenadas"
-            ? "Envie o memorial descritivo em PDF."
-            : "Envie o memorial descritivo e a planta do lote em PDF."}
+            ? canUseAzimute
+              ? "Envie o memorial descritivo em PDF. Se ele só tiver azimutes e distâncias, o Vertix muda o tipo sozinho."
+              : "Envie o memorial descritivo em PDF."
+            : "Envie o memorial e a planta em PDF. O Vertix lê, confere e posiciona o lote; se precisar, pede o ponto de partida."}
         </FieldDescription>
       </FieldSet>
 

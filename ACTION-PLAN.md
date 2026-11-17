@@ -81,9 +81,11 @@ Legenda: `[x]` feito · `[ ]` a fazer · ⚠️ bloqueia outras tarefas.
 
 ### Etapa 3 — Qualidade do motor (P1)
 
-- [ ] Testes unitários do parser, DMS, datum, fuso/hemisfério, fechamento, área e perímetro usando as fixtures existentes.
+- [x] Testes do motor de coordenadas com as fixtures (`pnpm run test:topocad`, 6 casos: SIGEF, quebra de linha, Unicode, sem vértices, PDF vazio, poligonal aberta, edição).
+- [ ] Ampliar os testes com datum, fuso/hemisfério declarados e memoriais reais anonimizados.
 - [ ] Testes de `lib/vertix-core` (azimute → coordenadas, fechamento angular e linear).
-- [ ] Adicionar script `pnpm test` que rode todos os testes.
+- [x] `pnpm test` roda todos os testes (KML, azimute e coordenadas).
+- [ ] Configurar o ESLint: o script `lint` existe, mas o ESLint não está instalado nem configurado.
 - [ ] Validar com memoriais reais anonimizados e abrir DXF/XLSX/KML em QGIS, AutoCAD e Google Earth.
 - [ ] Testar idempotência do reprocessamento e as rotas de exportação.
 
