@@ -1,25 +1,9 @@
-import { Navbar } from "@/components/ui/navbar"
-import { HeroSection } from "@/components/sections/hero-section"
-import { ImpactSection } from "@/components/sections/impact-section"
-import { FeaturesSection } from "@/components/sections/features-section"
-import { HowItWorksSection } from "@/components/sections/how-it-works-section"
-import { TestimonialsSection } from "@/components/sections/testimonials-section"
-import { PricingSection } from "@/components/sections/pricing-section"
-import { CtaSection } from "@/components/sections/cta-section"
-import { FooterSection } from "@/components/sections/footer-section"
+import { auth } from "@clerk/nextjs/server"
+import { redirect } from "next/navigation"
 
-export default function Home() {
-  return (
-    <main className="min-h-screen bg-zinc-950">
-      <Navbar />
-      <HeroSection />
-      <ImpactSection />
-      <FeaturesSection />
-      <HowItWorksSection />
-      <TestimonialsSection />
-      <PricingSection />
-      <CtaSection />
-      <FooterSection />
-    </main>
-  )
+// A landing page fica em outro site (vert1x.vercel.app), que redireciona para cá.
+// Aqui a raiz leva direto ao sistema: painel para quem está logado, login para os demais.
+export default async function Home() {
+  const { userId } = await auth()
+  redirect(userId ? "/dashboard" : "/sign-in")
 }

@@ -11,6 +11,12 @@ const isDashboardRoute = createRouteMatcher(["/dashboard(.*)"])
 const isAdminRoute = createRouteMatcher(["/admin(.*)"])
 
 export default clerkMiddleware(async (auth, request) => {
+  // Raiz do app: sem landing page (ela fica em outro site). Vai direto ao painel ou ao login.
+  if (request.nextUrl.pathname === "/") {
+    const { userId } = await auth()
+    return NextResponse.redirect(new URL(userId ? "/dashboard" : "/sign-in", request.url))
+  }
+
   if (isPublicRoute(request)) return
 
   if (isDashboardRoute(request)) {

@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": false,
+    "strictNullChecks": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "noEmitOnError": false,
+    "outDir": ".test-build/topocad",
+    "rootDir": "lib/topocad"
+  },
+  "include": ["lib/topocad/*.ts"]
+}

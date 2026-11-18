@@ -63,7 +63,7 @@ Legenda: `[x]` feito · `[ ]` a fazer · ⚠️ bloqueia outras tarefas.
   - `supabase/006_feature_access.sql`, `007_base_fundiaria.sql`, `007b_verificacao.sql`, `008_azimute_dados.sql`
 - [x] **1.2** Corrigir `supabase/005_project-type.sql` (agora `005b_project-type.sql`): remover o `insert into public.feature_access` (tabela inexistente); a configuração fica em `app_settings`, criada pelo `006`.
 - [x] **1.3** Renumerar os dois `005` para deixar a ordem de execução sem ambiguidade e atualizar `verify.sql`.
-- [ ] **1.4** No Supabase autorizado, aplicar na ordem os que faltam (`005b`, `006`, `007`, `008`), conferir a base fundiária com `007b_verificacao.sql` e rodar `verify.sql` (seções 8 e 9 cobrem o azimute).
+- [x] **1.4** SQL `005b`–`008` aplicados e conferidos no Supabase (2026-11-18): base fundiária com 114.256 lotes, `buscar_lote` ok, RLS ligada, bucket privado, PostGIS 3.3.7.
 - [ ] **1.5** Conferir RLS, Storage privado, isolamento por `user_id`, webhook Clerk e permissões de staff em Preview.
 - [ ] **1.6** Teste com login real: usuário comum e staff, criar/processar/editar/exportar projeto, acesso negado e sessão expirada, desktop e celular.
 - [ ] **1.7** Combinar uma regra para o v0: antes de "restaurar" ou fazer merge, comparar com o `main` atual.
@@ -81,9 +81,11 @@ Legenda: `[x]` feito · `[ ]` a fazer · ⚠️ bloqueia outras tarefas.
 
 ### Etapa 3 — Qualidade do motor (P1)
 
-- [ ] Testes unitários do parser, DMS, datum, fuso/hemisfério, fechamento, área e perímetro usando as fixtures existentes.
+- [x] Testes do motor de coordenadas com as fixtures (`pnpm run test:topocad`, 6 casos: SIGEF, quebra de linha, Unicode, sem vértices, PDF vazio, poligonal aberta, edição).
+- [ ] Ampliar os testes com datum, fuso/hemisfério declarados e memoriais reais anonimizados.
 - [ ] Testes de `lib/vertix-core` (azimute → coordenadas, fechamento angular e linear).
-- [ ] Adicionar script `pnpm test` que rode todos os testes.
+- [x] `pnpm test` roda todos os testes (KML, azimute e coordenadas).
+- [ ] Configurar o ESLint: o script `lint` existe, mas o ESLint não está instalado nem configurado.
 - [ ] Validar com memoriais reais anonimizados e abrir DXF/XLSX/KML em QGIS, AutoCAD e Google Earth.
 - [ ] Testar idempotência do reprocessamento e as rotas de exportação.
 
@@ -100,6 +102,21 @@ Legenda: `[x]` feito · `[ ]` a fazer · ⚠️ bloqueia outras tarefas.
 - [ ] Escolher provedor de pagamento e definir preços.
 - [ ] Ligar a assinatura `pro` ao pagamento (checkout, webhook, cancelamento).
 - [ ] Atualizar a página de planos e o admin de assinaturas com dados reais.
+
+### Etapa 5b — Inteligência fundiária (P2) — ver `ROADMAP.md` Fase 7 e `MERCADO.md`
+
+- [ ] **F4** Adicionar coluna `geometry` (SRID 4674) com índice GiST em `fundiario_lotes`, preenchida a partir do JSON (SQL novo, idempotente).
+- [ ] **F3** Importador dos shapefiles do Acervo Fundiário/SIGEF de RO (parcelas certificadas) para uma tabela própria, com data da base e atualização periódica.
+- [ ] **F1** Checagem de sobreposição ao concluir o projeto: parcelas SIGEF e lotes SEDAM que intersectam o polígono, com área e percentual; aviso na tela e no relatório.
+- [ ] **F2** Exportar confrontantes num raio configurável (padrão 1 km) em DXF/KML.
+- [ ] Mostrar ao usuário a data da base usada em cada conferência.
+- [ ] Revisar termos de uso: citar as fontes públicas e deixar claro que o produto é o processamento, não o dado.
+
+### Etapa 5c — Mercado e vendas (P2) — ver `MERCADO.md`
+
+- [ ] Decidir o foco inicial: Rondônia (venda direta) ou Brasil (anúncios).
+- [ ] Levantar a lista pública de credenciados no SIGEF em RO e os polos (Porto Velho, Ji-Paraná, Vilhena, Ariquemes, Cacoal, Rolim de Moura).
+- [ ] Validar preço do Pro (hipótese R$ 69,90–99,90/mês) com 5–10 profissionais antes de ligar a cobrança.
 
 ### Etapa 6 — Escala e operação (P3)
 
