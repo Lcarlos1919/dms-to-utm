@@ -55,4 +55,5 @@ Os scripts SQL ficam em `supabase/`. Revise e aplique alterações somente no am
 - `ROADMAP.md`: estado do produto, prioridades e decisões de escopo.
 - `TIMELINE.md`: linha do tempo com os marcos e commits.
 - `ACTION-PLAN.md`: checklist do que foi feito e do que falta fazer.
+- `MERCADO.md`: mercado em Rondônia, uso de dados públicos e ideias de monetização.
 - `PROJECT-CONTINUITY-SKILL.md`: mapa técnico e regras para manutenção.

@@ -64,11 +64,11 @@ O produto atende dois tipos de memorial:
 2. ~~`lib/vertix-core` sem uso~~ — ligada ao pipeline do azimute.
 3. ~~`005_project-type.sql` inserindo em tabela inexistente~~ — corrigido e renomeado para `005b_project-type.sql`.
 4. ~~Dois scripts `005`~~ — agora `005` e `005b`.
-5. Os SQL `005b`, `006`, `007` e `008` precisam estar aplicados no Supabase para o fluxo por azimute funcionar. A base fundiária (`fundiario_lotes`) precisa estar importada.
+5. ~~SQL pendentes no Supabase~~ — conferido em 2026-11-18 no projeto GEO-CONVERSOR: `005b`–`008` aplicados, `fundiario_lotes` com 114.256 lotes (base de 2026-10-29, 253 glebas), `buscar_lote` funcionando, RLS ligada, bucket `memoriais` privado, PostGIS 3.3.7 instalado e `memorial_azimute` liberado para o plano Pro. Já existe 1 memorial por azimute pronto em produção.
 6. O leitor de memoriais ainda não foi testado com memoriais reais. Faltam exemplos de cada formato usado pelos clientes.
 7. O proprietário não é armazenado. O município só é preenchido no KML dos memoriais por azimute; nos memoriais por coordenadas ele ainda sai vazio.
 8. Cobrança real não está conectada; planos existem apenas no código.
-9. Nenhum teste com login real no navegador foi feito; o estado das migrações no Supabase remoto não foi confirmado.
+9. Nenhum teste com login real no navegador foi registrado.
 
 ## 4. Fases
 
@@ -100,6 +100,21 @@ Proprietário e município no projeto, busca/filtros/paginação no admin, métr
 ### Fase 5 — Monetização (P2)
 
 Escolher provedor de pagamento, definir preços e ligar a assinatura `pro` ao pagamento real.
+Hipótese de preço a validar: Pro entre R$ 69,90 e R$ 99,90/mês, justificado pela Fase 7 (ver `MERCADO.md`).
+
+### Fase 7 — Inteligência fundiária (P2, diferencial do plano Pro)
+
+Usar bases públicas (dados abertos, Lei 12.527/2011) para entregar valor que o topógrafo hoje faz à mão.
+Regra: vender o software, a automação e o cruzamento; não revender o dado bruto.
+
+| Item | Entrega |
+| --- | --- |
+| F1 | **Sobreposição**: ao gerar o polígono, cruzar com as parcelas certificadas do SIGEF/INCRA e com a base SEDAM e avisar "este polígono sobrepõe N parcelas", com área e percentual sobreposto |
+| F2 | **Confrontantes**: botão "baixar vizinhos num raio de 1 km" em DXF/KML a partir das mesmas bases |
+| F3 | **Base própria e atualizada**: importar os shapefiles estaduais do Acervo Fundiário/SIGEF para o Supabase com PostGIS (já instalado), com atualização semanal ou quinzenal e data da base visível ao usuário |
+| F4 | **Geometria espacial**: coluna `geometry` com índice GiST em `fundiario_lotes` (hoje a geometria está em JSON) para consultas de sobreposição e vizinhança no banco |
+
+Regra técnica: nunca depender só da API ao vivo do governo (instável, lenta, com bloqueios). O GeoPortal ao vivo fica como complemento.
 
 ### Fase 6 — Escala e operação (P3)
 

@@ -116,6 +116,11 @@ Documentos irmãos: `ROADMAP.md` (visão e fases) e `ACTION-PLAN.md` (o que falt
 - PR #22 integrado ao `main` (`15e7750`), com deploy em produção pela Vercel.
 - Testes do motor de coordenadas (`pnpm run test:topocad`).
 
+### 18/nov — Banco conferido e plano de mercado
+
+- Supabase conferido: SQL `005b`–`008` aplicados, base fundiária com 114.256 lotes, PostGIS instalado e 1 memorial por azimute já pronto em produção.
+- `MERCADO.md` e Fase 7 (inteligência fundiária: sobreposição SIGEF e confrontantes) no roadmap.
+
 ---
 
 ## Próximos marcos
