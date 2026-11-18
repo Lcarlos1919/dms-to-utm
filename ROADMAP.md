@@ -45,7 +45,7 @@ O produto atende dois tipos de memorial:
 
 ### Entregue e no `main`
 
-- Landing page, cadastro e login com Clerk e marca Vertix.
+- Cadastro e login com Clerk e marca Vertix. A raiz do app (app-vertix.vercel.app) leva direto ao login ou ao painel; a landing page fica em vert1x.vercel.app.
 - Upload de memorial em PDF, processamento, mapa, edição de vértices e reprocessamento.
 - Exportação DXF (R12), XLSX e KML 2.2 (WGS84; bloqueia SAD69 e CRS ausente).
 - Painel admin com RBAC de staff via organização Clerk, auditoria, download do PDF original, créditos e exclusão de projetos com permissão.
