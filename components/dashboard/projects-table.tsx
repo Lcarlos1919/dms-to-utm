@@ -1,9 +1,9 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useTransition, type MouseEvent } from "react"
-import { FolderOpen, Trash2 } from "lucide-react"
+import { Compass, FileText, FolderOpen, Trash2 } from "lucide-react"
+import AnimatedList from "@/components/AnimatedList"
 import { excluirProjeto } from "@/app/dashboard/novo/actions"
 import { DashboardCard } from "@/components/dashboard/dashboard-card"
 import { Badge } from "@/components/ui/badge"
@@ -31,8 +31,6 @@ function rotuloStatus(project: ProjectRow): string {
   return statusLabels[project.status] ?? project.status
 }
 
-const projectGrid = "sm:grid-cols-[minmax(0,2fr)_minmax(110px,1fr)_minmax(110px,1fr)_minmax(130px,1fr)]"
-
 function DeleteProjectButton({ projectId, projectName, canDeleteMemorials }: { projectId: string; projectName: string; canDeleteMemorials: boolean }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -58,7 +56,7 @@ function DeleteProjectButton({ projectId, projectName, canDeleteMemorials }: { p
       aria-disabled={!canDeleteMemorials || isPending}
       aria-label={`Excluir memorial ${projectName}`}
       className={cn(
-        "pointer-events-auto relative z-20 rounded-lg p-2 text-zinc-500 transition-colors",
+        "relative z-20 shrink-0 rounded-lg p-2 text-zinc-500 transition-colors",
         canDeleteMemorials
           ? "hover:bg-red-950/40 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
           : "cursor-not-allowed opacity-50",
@@ -81,6 +79,8 @@ function DeleteProjectButton({ projectId, projectName, canDeleteMemorials }: { p
 }
 
 export function ProjectsTable({ projects, canDeleteMemorials = false }: { projects: ProjectRow[]; canDeleteMemorials?: boolean }) {
+  const router = useRouter()
+
   if (projects.length === 0) {
     return (
       <DashboardCard>
@@ -93,55 +93,43 @@ export function ProjectsTable({ projects, canDeleteMemorials = false }: { projec
     )
   }
 
+  // Lista com rolagem animada (React Bits AnimatedList): clique, Enter ou setas ↑/↓ para navegar.
   return (
-    <div className="space-y-3">
-      <div className={`hidden grid-cols-4 gap-4 px-5 text-xs font-medium text-zinc-500 ${projectGrid} sm:grid`} aria-hidden="true">
-        <span>Nome</span>
-        <span>Status</span>
-        <span>Área</span>
-        <span>Criado em</span>
-      </div>
-      {projects.map((project) => (
-        <div key={project.id}>
-          <DashboardCard>
-            <div className="group relative">
-              <Link
-                href={`/dashboard/projeto/${project.id}`}
-                aria-label={`Abrir projeto ${project.name}`}
-                className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-400"
-              />
-              <div className={`pointer-events-none relative z-10 grid grid-cols-2 gap-x-4 gap-y-3 p-4 sm:grid-cols-4 sm:items-center sm:gap-4 ${projectGrid}`}>
-                <div className="col-span-2 min-w-0 sm:col-span-1">
-                  <span className="mb-1 block text-xs text-zinc-500 sm:hidden">Nome</span>
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="truncate font-medium text-zinc-100 transition-colors group-hover:underline">
-                      {project.name}
-                    </span>
-                    {project.memorial_type === "azimute" && <Badge variant="outline" className="shrink-0">Azimute</Badge>}
-                    <DeleteProjectButton
-                      projectId={project.id}
-                      projectName={project.name}
-                      canDeleteMemorials={canDeleteMemorials}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <span className="mb-1 block text-xs text-zinc-500 sm:hidden">Status</span>
-                  <p className="text-sm text-zinc-400">{rotuloStatus(project)}</p>
-                </div>
-                <div>
-                  <span className="mb-1 block text-xs text-zinc-500 sm:hidden">Área</span>
-                  <p className="text-sm text-zinc-400">{formatArea(project.area_m2)}</p>
-                </div>
-                <div>
-                  <span className="mb-1 block text-xs text-zinc-500 sm:hidden">Criado em</span>
-                  <p className="text-sm text-zinc-400">{formatDate(project.created_at)}</p>
-                </div>
-              </div>
-            </div>
-          </DashboardCard>
-        </div>
-      ))}
-    </div>
+    <AnimatedList
+      items={projects.map((project) => ({ id: project.id, title: project.name }))}
+      onItemSelect={(_item, index) => router.push(`/dashboard/projeto/${projects[index].id}`)}
+      animation="pop"
+      theme="dark"
+      width="100%"
+      maxHeight="min(70vh, 720px)"
+      renderItem={(_item, index) => {
+        const project = projects[index]
+        const Icone = project.memorial_type === "azimute" ? Compass : FileText
+        return (
+          <>
+            <span className="flex size-10 flex-none items-center justify-center rounded-[10px] bg-white/[0.06] text-zinc-300">
+              <Icone className="size-[18px]" aria-hidden="true" />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col gap-[2px]">
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-[14.5px] font-semibold leading-[1.3] tracking-[-0.01em]">{project.name}</span>
+                {project.memorial_type === "azimute" && <Badge variant="outline" className="shrink-0">Azimute</Badge>}
+              </span>
+              <span className="truncate text-[13px] leading-[1.35] text-[color:var(--al-muted)]">
+                {rotuloStatus(project)} · {formatArea(project.area_m2)}
+              </span>
+            </span>
+            <span className="hidden flex-none text-[12.5px] tabular-nums text-[color:var(--al-muted)] sm:block">
+              {formatDate(project.created_at)}
+            </span>
+            <DeleteProjectButton
+              projectId={project.id}
+              projectName={project.name}
+              canDeleteMemorials={canDeleteMemorials}
+            />
+          </>
+        )
+      }}
+    />
   )
 }
