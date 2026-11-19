@@ -79,30 +79,47 @@ export async function ocrTesseract(pdf: PdfDoc): Promise<string> {
   }
 }
 
-// ---------- 2. OCR.space (API grátis; arquivo até 1 MB e 3 páginas) ----------
+// ---------- 2. OCR.space (plano grátis: 25.000 req./mês nos motores 1/2 + 1.000 no motor 3;
+// arquivo até 1 MB, PDF até 3 páginas, 500 req./dia por IP). Docs: ocr.space/ocrapi ----------
 
-export async function ocrSpace(bytes: Uint8Array): Promise<string> {
+/** Motores do OCR.space em ordem de tentativa: o 3 lê tabelas com mais precisão (devolve Markdown);
+ *  o 2 é mais rápido e tem cota maior. OCR_SPACE_ENGINE força um só. */
+export function motoresOcrSpace(): string[] {
+  const forcado = process.env.OCR_SPACE_ENGINE?.trim()
+  return forcado ? [forcado] : ["3", "2"]
+}
+
+export async function ocrSpace(bytes: Uint8Array, engine: string): Promise<string> {
   const key = process.env.OCR_SPACE_API_KEY
   if (!key) throw new MotorIndisponivel("OCR.space não configurado")
+  // Sem "language": nos motores 2 e 3 o padrão é "auto" (os códigos de idioma estão obsoletos).
   const form = new URLSearchParams({
     base64Image: `data:application/pdf;base64,${Buffer.from(bytes).toString("base64")}`,
     filetype: "PDF",
-    language: "por",
-    OCREngine: process.env.OCR_SPACE_ENGINE || "2",
+    OCREngine: engine,
     isTable: "true",
     scale: "true",
     detectOrientation: "true",
   })
-  const r = await fetch("https://api.ocr.space/parse/image", {
+  const r = await fetch(process.env.OCR_SPACE_ENDPOINT || "https://api.ocr.space/parse/image", {
     method: "POST",
     headers: { apikey: key, "Content-Type": "application/x-www-form-urlencoded" },
     body: form,
-    signal: AbortSignal.timeout(90_000),
+    signal: AbortSignal.timeout(engine === "3" ? 120_000 : 60_000),
   })
   if (!r.ok) throw new Error(`OCR.space HTTP ${r.status}`)
-  const j = (await r.json()) as { IsErroredOnProcessing?: boolean; ErrorMessage?: string | string[]; ParsedResults?: { ParsedText?: string }[] }
-  if (j.IsErroredOnProcessing) throw new Error(`OCR.space: ${[j.ErrorMessage].flat().join(" ")}`)
-  return (j.ParsedResults ?? []).map((p) => p.ParsedText ?? "").join("\n")
+  const j = (await r.json()) as {
+    OCRExitCode?: number | string
+    IsErroredOnProcessing?: boolean
+    ErrorMessage?: string | string[] | null
+    ParsedResults?: { ParsedText?: string | null; FileParseExitCode?: number | string; ErrorMessage?: string | null }[]
+  }
+  // OCRExitCode: 1 = tudo lido, 2 = parcial, 3 = nenhuma página, 4 = erro fatal.
+  const saida = Number(j.OCRExitCode)
+  if (j.IsErroredOnProcessing && saida !== 2) throw new Error(`OCR.space (motor ${engine}): ${[j.ErrorMessage].flat().filter(Boolean).join(" ") || `código ${saida}`}`)
+  const paginas = (j.ParsedResults ?? []).filter((p) => Number(p.FileParseExitCode) === 1).map((p) => p.ParsedText ?? "")
+  if (!paginas.length) throw new Error(`OCR.space (motor ${engine}): nenhuma página lida`)
+  return paginas.join("\n")
 }
 
 // ---------- 3. Azure Document Intelligence (plano F0: 500 páginas/mês, 2 páginas por envio) ----------

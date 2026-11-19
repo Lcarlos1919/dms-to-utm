@@ -4,7 +4,7 @@ import { avaliarMemorial, avaliarMemorialOcr, normalizarOcr, NOME_MOTOR, planeja
 import { lerRodapePlanta, type RodapePlanta } from "@/lib/vertix-core/planta"
 import { memorialDaTranscricao, numeroTranscrito, textoDaCoordenada } from "@/lib/vertix-core/transcricao"
 import type { MemorialLido } from "@/lib/vertix-core/memorial"
-import { abrirPdf, motoresConfigurados, ocrAzure, ocrGoogle, ocrSpace, ocrTesseract } from "@/lib/ocr/motores"
+import { abrirPdf, motoresConfigurados, motoresOcrSpace, ocrAzure, ocrGoogle, ocrSpace, ocrTesseract } from "@/lib/ocr/motores"
 
 /** Tempo máximo para começar um novo motor (a rota tem 300 s). */
 const ORCAMENTO_MS = 200_000
@@ -26,11 +26,27 @@ export interface LeituraEscaneada {
   tentativas: Tentativa[]
 }
 
-async function textoDoMotor(motor: Exclude<MotorOcr, "claude">, bytes: Uint8Array, pdf: Awaited<ReturnType<typeof abrirPdf>>): Promise<string> {
-  if (motor === "tesseract") return ocrTesseract(pdf)
-  if (motor === "ocrspace") return ocrSpace(bytes)
-  if (motor === "azure") return ocrAzure(bytes)
-  return ocrGoogle(bytes, pdf.numPages)
+type Pdf = Awaited<ReturnType<typeof abrirPdf>>
+
+/** Leituras candidatas de um motor, uma de cada vez (o OCR.space tenta o motor 3 e depois o 2). */
+function leiturasDoMotor(motor: Exclude<MotorOcr, "claude">, bytes: Uint8Array, pdf: Pdf): (() => Promise<string>)[] {
+  if (motor === "tesseract") return [() => ocrTesseract(pdf)]
+  if (motor === "ocrspace") return motoresOcrSpace().map((e) => () => ocrSpace(bytes, e))
+  if (motor === "azure") return [() => ocrAzure(bytes)]
+  return [() => ocrGoogle(bytes, pdf.numPages)]
+}
+
+async function textoDoMotor(motor: Exclude<MotorOcr, "claude">, bytes: Uint8Array, pdf: Pdf): Promise<string> {
+  let erro: unknown
+  for (const ler of leiturasDoMotor(motor, bytes, pdf)) {
+    try {
+      const t = await ler()
+      if (t.trim()) return t
+    } catch (e) {
+      erro = e
+    }
+  }
+  throw erro ?? new Error("leitura vazia")
 }
 
 /**
@@ -58,9 +74,22 @@ export async function lerMemorialEscaneado(bytes: Uint8Array): Promise<LeituraEs
           av = avaliarMemorial(memorialDaTranscricao(tr))
           textoCoordenada = textoDaCoordenada(tr) ?? ""
         } else {
-          const texto = await textoDoMotor(motor, bytes, pdf)
-          av = avaliarMemorialOcr(texto)
-          textoCoordenada = normalizarOcr(texto)
+          // Cada leitura candidata do motor é conferida; para na primeira aprovada.
+          let melhorDoMotor: { av: AvaliacaoLeitura; texto: string } | null = null
+          let erro: unknown
+          for (const ler of leiturasDoMotor(motor, bytes, pdf)) {
+            try {
+              const texto = await ler()
+              const a = avaliarMemorialOcr(texto)
+              if (!melhorDoMotor || a.pontos > melhorDoMotor.av.pontos) melhorDoMotor = { av: a, texto }
+              if (a.aprovada) break
+            } catch (e) {
+              erro = e
+            }
+          }
+          if (!melhorDoMotor) throw erro ?? new Error("leitura vazia")
+          av = melhorDoMotor.av
+          textoCoordenada = normalizarOcr(melhorDoMotor.texto)
         }
         tentativas.push({ motor, ok: av.aprovada, motivo: av.motivo, ms: Date.now() - t0 })
         if (!melhor || av.pontos > melhor.av.pontos) melhor = { av, motor, textoCoordenada }

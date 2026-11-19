@@ -54,6 +54,9 @@ export function planejarMotores(doc: DocumentoInfo, configurados: ReadonlySet<Mo
  */
 export function normalizarOcr(texto: string): string {
   let t = texto
+    // Tabelas em Markdown (OCR.space motor 3): "| M-1343 | M-1341 | 90°29'42" | 250,16 |" -> colunas com espaço.
+    .replace(/^[ \t]*\|?[ \t]*:?-{3,}:?[ \t]*(\|[ \t]*:?-{3,}:?[ \t]*)*\|?[ \t]*$/gm, '')
+    .replace(/^[ \t]*\|(.*)\|[ \t]*$/gm, (_m, meio: string) => meio.split('|').map((c) => c.trim()).join('   '))
     .replace(/[ \t]+/g, ' ')
     .replace(/[“”″]/g, '"')
     .replace(/[‘’′´`]/g, "'")
