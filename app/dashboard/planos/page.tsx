@@ -11,7 +11,12 @@ export const metadata: Metadata = {
   description: "Compare os planos Grátis e Pro do Vertix.",
 }
 
-export default async function DashboardPlanosPage() {
+export default async function DashboardPlanosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string }>
+}) {
+  const { checkout } = await searchParams
   const userId = await requireUser()
 
   if (!isSupabaseConfigured()) {
@@ -27,8 +32,19 @@ export default async function DashboardPlanosPage() {
         <h1 className="mt-1 font-display text-2xl font-semibold text-zinc-100">Planos</h1>
         <p className="mt-2 text-sm text-zinc-500">Confira seu uso e os recursos disponíveis em cada plano.</p>
       </div>
+      {checkout === "indisponivel" && (
+        <p role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+          O checkout do Pro ainda não está disponível. Tente novamente em instantes ou fale com o suporte.
+        </p>
+      )}
       <UsageCard usage={usage} />
       <PricingSection compact currentPlan={usage.plan} />
+      {usage.plan === "free" && (
+        <p className="text-sm text-zinc-500">
+          O pagamento é feito pela Cakto (cartão, Pix ou boleto). O Pro é liberado automaticamente assim que o pagamento
+          for aprovado. Se não liberar em alguns minutos, confira se usou o mesmo e-mail da sua conta Vertix.
+        </p>
+      )}
     </div>
   )
 }

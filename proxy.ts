@@ -21,7 +21,12 @@ export default clerkMiddleware(async (auth, request) => {
 
   if (isDashboardRoute(request)) {
     const { userId } = await auth()
-    if (!userId) return NextResponse.redirect(new URL("/sign-in", request.url))
+    if (!userId) {
+      // Volta para a página pedida depois do login (ex.: /dashboard/assinar vindo da landing page).
+      const signIn = new URL("/sign-in", request.url)
+      signIn.searchParams.set("redirect_url", request.nextUrl.pathname + request.nextUrl.search)
+      return NextResponse.redirect(signIn)
+    }
     return
   }
 
