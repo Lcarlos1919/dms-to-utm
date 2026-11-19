@@ -28,10 +28,10 @@ const plans: Plan[] = [
   {
     name: "Pro",
     description: "Para quem processa memoriais todos os dias",
-    price: "Em breve",
-    period: "",
+    price: "R$ 69,90",
+    period: "/mês",
     features: ["Memoriais ilimitados", "Suporte prioritário", "Histórico completo"],
-    cta: "Disponível em breve",
+    cta: "Checkout Cakto indisponível",
     href: null,
     highlighted: true,
   },
@@ -129,9 +129,14 @@ export function PricingSection({
                       {compact ? "Ver projetos" : plan.cta}
                     </Link>
                   ) : (
-                    <span aria-disabled="true" className={cn(buttonClassName, "cursor-default") }>
+                    <button
+                      type="button"
+                      disabled
+                      title={plan.href ? undefined : "O checkout da Cakto ainda não foi configurado."}
+                      className={cn(buttonClassName, "cursor-not-allowed opacity-70")}
+                    >
                       {compact && isCurrentPlan ? "Plano atual" : plan.cta}
-                    </span>
+                    </button>
                   )}
                 </div>
               </BorderGlow>
