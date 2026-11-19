@@ -9,7 +9,11 @@ export const dynamic = "force-dynamic"
 /** Leva o usuário logado ao checkout da Cakto, com um token que liga o pagamento à conta. */
 export async function GET(request: NextRequest) {
   const { userId } = await auth()
-  if (!userId) return NextResponse.redirect(new URL("/sign-in", request.url))
+  if (!userId) {
+    const signIn = new URL("/sign-in", request.url)
+    signIn.searchParams.set("redirect_url", "/dashboard/assinar")
+    return NextResponse.redirect(signIn)
+  }
 
   const checkoutUrl = caktoCheckoutUrl()
   if (!checkoutUrl) return NextResponse.redirect(new URL("/dashboard/planos?checkout=indisponivel", request.url))
