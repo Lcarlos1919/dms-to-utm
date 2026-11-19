@@ -45,7 +45,11 @@ Legenda: `[x]` feito · `[ ]` a fazer · ⚠️ bloqueia outras tarefas.
 - [x] D5 — vértices gravados; mapa, edição e exportação iguais ao fluxo por coordenadas.
 - [x] Pipeline automático: ao enviar, o memorial sai **pronto** quando há coordenada no texto ou encaixe seguro no lote.
 - [x] Leitor tolerante a vários formatos; memorial enviado como "coordenadas" sem coordenadas passa para o fluxo por azimute.
-- [x] Testes do motor: `pnpm run test:azimute` (12 casos).
+- [x] Testes do motor: `pnpm run test:azimute` (18 casos, incluindo os memoriais escaneados do INCRA de 1983, lotes 07 e 56 da Gleba Rio Branco).
+- [x] Leitura de PDFs escaneados por visão (memorial e planta), com conversão e validação em `lib/vertix-core/transcricao.ts`.
+- [x] Cascata de OCR para escaneados (`lib/ocr/`): Tesseract local → Azure F0 → OCR.space → Google Vision → Claude, escolhida por páginas/tamanho, com conferência automática.
+- [ ] Criar as chaves gratuitas (OCR.space, Azure F0) e a do Google Vision, cadastrar na Vercel e reprocessar os memoriais escaneados (motores online não testados ao vivo: o sandbox não alcança essas APIs).
+- [ ] Contador mensal por motor (Azure 500 págs., Google 1.000 págs.) para não passar do plano grátis.
 
 ### Validações registradas
 - [x] Revisão de 2026-11-17: `tsc`, build com checagem de tipos ligada, `test:kml` 8/8 e `test:azimute` 12/12.

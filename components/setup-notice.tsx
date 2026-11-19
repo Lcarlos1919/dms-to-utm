@@ -3,7 +3,7 @@ import { DashboardCard } from "@/components/dashboard/dashboard-card"
 
 export function SetupNotice({ variables }: { variables: string[] }) {
   return (
-    <DashboardCard backgroundColor="#1c1917" borderRadius={16}>
+    <DashboardCard>
       <div role="alert" className="flex gap-3 p-5 text-sm">
         <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400" aria-hidden="true" />
         <div>

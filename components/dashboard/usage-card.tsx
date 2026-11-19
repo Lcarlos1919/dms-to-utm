@@ -1,6 +1,7 @@
 import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { DashboardCard } from "@/components/dashboard/dashboard-card"
 import type { UsageStatus } from "@/lib/usage"
 
 export function UsageCard({ usage }: { usage: UsageStatus }) {
@@ -8,37 +9,40 @@ export function UsageCard({ usage }: { usage: UsageStatus }) {
   const percent = usage.limit ? Math.min(100, (usage.used / usage.limit) * 100) : 0
 
   return (
-    <DashboardCard className="w-full max-w-sm" borderRadius={16} glowIntensity={1.2}>
-      <section aria-labelledby="usage-title" className="w-full p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 id="usage-title" className="text-sm font-medium text-zinc-400">Uso do mês</h2>
-          <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-xs text-zinc-300">
-            {isPro ? "Pro" : "Grátis"}
+    <Card className="w-full max-w-sm gap-4 py-5" aria-labelledby="usage-title">
+      <CardHeader className="px-5">
+        <CardDescription id="usage-title">Uso do mês</CardDescription>
+        <CardTitle className="text-2xl tabular-nums">
+          {usage.used}
+          <span className="ml-1 text-sm font-normal text-muted-foreground">
+            {isPro ? "memoriais · ilimitado" : `de ${usage.limit} memoriais`}
           </span>
-        </div>
+        </CardTitle>
+        <CardAction>
+          <Badge variant={isPro ? "default" : "secondary"}>{isPro ? "Pro" : "Grátis"}</Badge>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="space-y-3 px-5">
         {!usage.canCreateMemorials ? (
-          <p role="status" className="text-sm text-zinc-400">
+          <p role="status" className="text-sm text-muted-foreground">
             A criação de memoriais está bloqueada para esta conta. Contate o suporte para solicitar a liberação.
           </p>
-        ) : isPro ? (
-          <p className="text-zinc-100">
-            <span className="font-display text-2xl font-semibold">{usage.used}</span> memoriais processados · ilimitado
-          </p>
         ) : (
-          <>
-            <p className="mb-3 text-zinc-100">
-              <span className="font-display text-2xl font-semibold">{usage.used}</span> de {usage.limit} memoriais usados
-            </p>
-            <Progress value={percent} aria-label="Memoriais usados" className="bg-zinc-800" />
-            {!usage.canCreate && (
-              <p className="mt-3 text-sm text-zinc-400">
-                Limite atingido. {" "}
-                <Link href="/dashboard/planos" className="text-zinc-100 underline underline-offset-4">Assine o Pro</Link>
-              </p>
-            )}
-          </>
+          !isPro && (
+            <>
+              <Progress value={percent} aria-label="Memoriais usados" />
+              {!usage.canCreate && (
+                <p className="text-sm text-muted-foreground">
+                  Limite atingido.{" "}
+                  <Link href="/dashboard/planos" className="font-medium text-foreground underline underline-offset-4">
+                    Ver planos
+                  </Link>
+                </p>
+              )}
+            </>
+          )
         )}
-      </section>
-    </DashboardCard>
+      </CardContent>
+    </Card>
   )
 }

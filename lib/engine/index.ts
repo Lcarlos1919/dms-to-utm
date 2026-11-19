@@ -131,9 +131,11 @@ export async function processMemorial(projectId: string, userId: string): Promis
     const result = processarPaginas(pages)
 
     // Sem coordenadas, mas com azimutes e distâncias: é um memorial por azimute.
-    if (!result.ok && result.erro.codigo === "NENHUM_VERTICE") {
+    // PDF escaneado (sem texto): o fluxo por azimute lê a imagem e monta a tabela.
+    if (!result.ok && (result.erro.codigo === "NENHUM_VERTICE" || result.erro.codigo === "PDF_SEM_TEXTO")) {
       const texto = pages.map((p) => reconstruirLinhas(p).join("\n")).join("\n")
-      if (lerMemorial(texto).segmentos.length >= 3 && (await canUseFeature(userId, "memorial_azimute"))) {
+      const passaParaAzimute = result.erro.codigo === "PDF_SEM_TEXTO" || lerMemorial(texto).segmentos.length >= 3
+      if (passaParaAzimute && (await canUseFeature(userId, "memorial_azimute"))) {
         const { data: convertido } = await db
           .from("projects")
           .update({ memorial_type: "azimute", status: "draft", error_code: null, error_message: null })

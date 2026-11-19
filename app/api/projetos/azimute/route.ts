@@ -9,7 +9,7 @@ import { getUsageStatus } from "@/lib/usage"
 import { processarAzimute } from "@/lib/azimute/processar"
 
 export const runtime = "nodejs"
-export const maxDuration = 60
+export const maxDuration = 300
 
 const projectNameSchema = z.string().trim().min(1).max(120)
 const memorialTypeSchema = z.enum(["coordenadas", "azimute"])
