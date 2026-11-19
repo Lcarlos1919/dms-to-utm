@@ -16,9 +16,10 @@ alter table public.subscriptions add column if not exists customer_email text;
 alter table public.subscriptions add column if not exists last_event text;
 alter table public.subscriptions add column if not exists canceled_at timestamptz;
 
+-- Índice sem WHERE: o upsert (on conflict) do PostgREST não aceita índice parcial.
+-- Linhas com provider_subscription_id nulo continuam permitidas (NULLs são distintos).
 create unique index if not exists subscriptions_provider_sub_uidx
-  on public.subscriptions (provider, provider_subscription_id)
-  where provider_subscription_id is not null;
+  on public.subscriptions (provider, provider_subscription_id);
 
 create table if not exists public.checkout_tokens (
   token text primary key,
@@ -40,8 +41,7 @@ create table if not exists public.billing_events (
   created_at timestamptz not null default now()
 );
 create unique index if not exists billing_events_dedupe_uidx
-  on public.billing_events (provider, event, order_id)
-  where order_id is not null;
+  on public.billing_events (provider, event, order_id);
 
 alter table public.checkout_tokens enable row level security;
 alter table public.billing_events enable row level security;
