@@ -28,11 +28,11 @@ const plans: Plan[] = [
   {
     name: "Pro",
     description: "Para quem processa memoriais todos os dias",
-    price: "Em breve",
-    period: "",
-    features: ["Memoriais ilimitados", "Suporte prioritário", "Histórico completo"],
-    cta: "Disponível em breve",
-    href: null,
+    price: "R$ 69,90",
+    period: "/mês",
+    features: ["Memoriais ilimitados", "Exportação XLSX, DXF e KML", "Suporte prioritário", "Histórico completo"],
+    cta: "Assinar o Pro",
+    href: "/dashboard/assinar",
     highlighted: true,
   },
 ]
@@ -125,9 +125,16 @@ export function PricingSection({
                   </ul>
 
                   {plan.href && !(compact && isCurrentPlan) ? (
-                    <Link href={compact ? "/dashboard" : plan.href} className={buttonClassName}>
-                      {compact ? "Ver projetos" : plan.cta}
-                    </Link>
+                    plan.highlighted ? (
+                      // Rota de servidor que redireciona ao checkout externo: link comum, sem prefetch.
+                      <a href={plan.href} className={buttonClassName}>
+                        {plan.cta}
+                      </a>
+                    ) : (
+                      <Link href={compact ? "/dashboard" : plan.href} className={buttonClassName}>
+                        {compact ? "Ver projetos" : plan.cta}
+                      </Link>
+                    )
                   ) : (
                     <span aria-disabled="true" className={cn(buttonClassName, "cursor-default") }>
                       {compact && isCurrentPlan ? "Plano atual" : plan.cta}

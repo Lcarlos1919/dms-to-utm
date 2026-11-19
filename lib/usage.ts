@@ -1,6 +1,7 @@
 import "server-only"
 
 import { createAdminClient } from "@/lib/supabase/server"
+import { reconcileExpiredPlan } from "@/lib/billing/cakto"
 import { getMemorialPermissions } from "@/lib/profiles"
 
 export const DEFAULT_FREE_LIMIT = 3
@@ -85,7 +86,9 @@ export async function getUsageStatus(userId: string, options: UsageStatusOptions
 
   if (profileError || usageError || processingError) throw new Error("Não foi possível consultar o uso do plano.")
 
-  const plan = profile?.plan === "pro" ? "pro" : "free"
+  // Assinatura da Cakto cancelada/atrasada e vencida: volta ao Grátis.
+  const expired = profile?.plan === "pro" ? await reconcileExpiredPlan(userId) : false
+  const plan = profile?.plan === "pro" && !expired ? "pro" : "free"
   const bonusCredits = Number(profile?.bonus_credits ?? 0)
   const used = Number(usage?.memorials_used ?? 0)
   const reserved = processingCount ?? 0
