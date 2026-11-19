@@ -2,11 +2,16 @@ import "server-only"
 
 import { createAdminClient } from "@/lib/supabase/server"
 import { MAX_PDF_SIZE } from "@/lib/pdf-validation"
-import { lerCoordenadaInicial, lerMemorial } from "@/lib/vertix-core/memorial"
+import { lerCoordenadaInicial, lerMemorial, type MemorialLido } from "@/lib/vertix-core/memorial"
 import { lerRodapePlanta } from "@/lib/vertix-core/planta"
+import { memorialDaTranscricao, numeroTranscrito, textoDaCoordenada } from "@/lib/vertix-core/transcricao"
+import { LeituraVisaoIndisponivel, transcreverMemorial, transcreverRodapePlanta } from "@/lib/azimute/ler-imagem"
 import { FUSO_PADRAO, type AzimuteDados } from "@/lib/azimute/tipos"
 
 const MAX_PAGINAS = 30
+/** Abaixo disso o PDF é tratado como imagem (escaneado): só carimbos ou números soltos. */
+const MIN_TEXTO_UTIL = 40
+const temTexto = (t: string) => t.replace(/\s+/g, "").length >= MIN_TEXTO_UTIL
 
 export class ErroLeitura extends Error {
   constructor(
@@ -58,13 +63,49 @@ export async function lerDocumentosDoProjeto(memorialPath: string, plantaPath: s
     if (e instanceof ErroLeitura && e.codigo === "PDF_MUITO_GRANDE") throw e
     avisos.push("Não foi possível ler o texto do memorial.")
   }
-  if (!memorialTexto.trim()) avisos.push("O PDF do memorial parece ser uma imagem (sem texto). Preencha a tabela manualmente.")
+  // PDF escaneado (sem texto): lê por visão. Se a leitura não estiver disponível, a tabela fica para preencher.
+  let memorial: MemorialLido | null = temTexto(memorialTexto) ? lerMemorial(memorialTexto) : null
+  let textoCoordenada = memorial ? memorialTexto : ""
+  let escaneado = false
+  if (!memorial || memorial.segmentos.length < 3) {
+    try {
+      const tr = await transcreverMemorial(memorialBytes)
+      const lido = memorialDaTranscricao(tr)
+      if (lido.segmentos.length >= 3 || !memorial) {
+        memorial = lido
+        textoCoordenada = textoDaCoordenada(tr) ?? ""
+        escaneado = true
+        avisos.push("Memorial lido como imagem (PDF escaneado). Confira a tabela com o documento antes de seguir.")
+      }
+    } catch (e) {
+      if (!memorial) {
+        avisos.push(
+          e instanceof LeituraVisaoIndisponivel
+            ? "O PDF do memorial é uma imagem (sem texto) e a leitura de PDFs escaneados não está ativada. Preencha a tabela manualmente."
+            : "O PDF do memorial é uma imagem (sem texto) e a leitura automática falhou. Tente de novo ou preencha a tabela manualmente.",
+        )
+      }
+      console.error("[azimute] leitura por visão do memorial falhou:", e instanceof Error ? e.message : e)
+    }
+  }
 
   let planta: AzimuteDados["planta"] = {}
   if (plantaPath) {
     try {
-      const plantaTexto = await textoDoPdf(await baixar(plantaPath))
+      const plantaBytes = await baixar(plantaPath)
+      const plantaTexto = await textoDoPdf(plantaBytes).catch(() => "")
       const rodape = lerRodapePlanta(plantaTexto)
+      if (!rodape.areaHa && !rodape.perimetroM && (escaneado || !temTexto(plantaTexto))) {
+        try {
+          const r = await transcreverRodapePlanta(plantaBytes)
+          rodape.lote = r.lote?.replace(/^lote\s*/i, "").trim().toUpperCase() || rodape.lote
+          rodape.gleba = r.gleba?.replace(/^(gleba|gl)\s*-?\s*/i, "").trim().toUpperCase() || rodape.gleba
+          rodape.areaHa = numeroTranscrito(r.areaHa)
+          rodape.perimetroM = numeroTranscrito(r.perimetroM)
+        } catch (e) {
+          console.error("[azimute] leitura por visão da planta falhou:", e instanceof Error ? e.message : e)
+        }
+      }
       planta = {
         lote: rodape.lote,
         gleba: rodape.gleba,
@@ -73,11 +114,10 @@ export async function lerDocumentosDoProjeto(memorialPath: string, plantaPath: s
       }
       if (!rodape.areaHa && !rodape.perimetroM) avisos.push("Não foi possível ler área e perímetro no rodapé da planta; confira visualmente.")
     } catch {
-      avisos.push("Não foi possível ler o texto da planta; confira visualmente.")
+      avisos.push("Não foi possível ler a planta; confira visualmente.")
     }
   }
 
-  const memorial = memorialTexto.trim() ? lerMemorial(memorialTexto) : null
   if (memorial) avisos.push(...memorial.avisos)
   const segmentos = (memorial?.segmentos ?? []).map((s) => ({
     de: s.de,
@@ -90,7 +130,7 @@ export async function lerDocumentosDoProjeto(memorialPath: string, plantaPath: s
   }))
 
   // Coordenada de partida e fuso declarados no próprio memorial (quando existem).
-  const coord = memorialTexto.trim() ? lerCoordenadaInicial(memorialTexto, memorial?.inicio) : undefined
+  const coord = textoCoordenada.trim() ? lerCoordenadaInicial(textoCoordenada, memorial?.inicio) : undefined
   const fusoTexto = coord?.fuso && coord.fuso >= 18 && coord.fuso <= 25 ? coord.fuso : undefined
   let fuso = fusoTexto ?? FUSO_PADRAO
   if (!fusoTexto && coord?.lon !== undefined) {

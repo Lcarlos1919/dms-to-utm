@@ -9,7 +9,7 @@ import type { Segmento } from "@/lib/vertix-core/memorial"
 import { relatorioPoligonal, validarSegmentos } from "@/lib/vertix-core/revisao"
 
 export const runtime = "nodejs"
-export const maxDuration = 60
+export const maxDuration = 300
 
 const idSchema = z.string().uuid()
 

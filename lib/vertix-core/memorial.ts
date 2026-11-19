@@ -172,7 +172,7 @@ function lerAnguloAntes(t: string, inicio?: string): Segmento[] {
 
 /** Tabela "De Para Azimute Distância" (ex.: "P1 P2 92°33'41,91" 125,45"). */
 function lerTabela(t: string): Segmento[] {
-  const re = new RegExp(`${ID}\\s+(?:a\\s+|-\\s*|→\\s*)?${ID}\\s+${ANG_QUALQUER}\\s+([\\d.]+,\\d+|\\d+\\.\\d+|\\d+)\\s*(?:m\\b)?`, 'gi');
+  const re = new RegExp(`${ID}\\s+(?:a\\s+|-\\s*|→\\s*)?${ID}\\s+${ANG_QUALQUER}\\s+([\\d.]+,\\d+|\\d+\\.\\d+|\\d+)\\s*(?:m\\b(?!\\s?-?\\s?\\d))?`, 'gi'); // "m" não pode ser o início do próximo vértice (M-1376)
   const segs: Segmento[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(t))) {

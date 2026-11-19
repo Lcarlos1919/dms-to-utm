@@ -121,6 +121,11 @@ Documentos irmãos: `ROADMAP.md` (visão e fases) e `ACTION-PLAN.md` (o que falt
 - Supabase conferido: SQL `005b`–`008` aplicados, base fundiária com 114.256 lotes, PostGIS instalado e 1 memorial por azimute já pronto em produção.
 - `MERCADO.md` e Fase 7 (inteligência fundiária: sobreposição SIGEF e confrontantes) no roadmap.
 
+### 19/nov — Memoriais escaneados
+
+- Memoriais em imagem (sem texto) passam a ser lidos por visão; tabela "DADOS DO PERÍMETRO" com vértices "M-…" corrigida no leitor de texto.
+- Memoriais reais do INCRA (1983) viram testes: perímetro bate em 5 cm e área em 0,1% com o declarado.
+
 ---
 
 ## Próximos marcos
