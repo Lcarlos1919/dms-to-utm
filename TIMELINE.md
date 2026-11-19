@@ -124,6 +124,7 @@ Documentos irmãos: `ROADMAP.md` (visão e fases) e `ACTION-PLAN.md` (o que falt
 ### 19/nov — Memoriais escaneados
 
 - Memoriais em imagem (sem texto) passam a ser lidos por visão; tabela "DADOS DO PERÍMETRO" com vértices "M-…" corrigida no leitor de texto.
+- Cascata de OCR com motores gratuitos escolhidos por páginas/tamanho (Tesseract local, Azure F0, OCR.space), depois Google Cloud Vision e Claude.
 - Memoriais reais do INCRA (1983) viram testes: perímetro bate em 5 cm e área em 0,1% com o declarado.
 
 ---

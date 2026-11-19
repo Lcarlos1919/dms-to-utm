@@ -27,7 +27,23 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  serverExternalPackages: ["unpdf"],
+  // Pacotes com binário nativo, WebAssembly ou arquivos de dados: ficam fora do bundle.
+  serverExternalPackages: ["unpdf", "pdfjs-dist", "@napi-rs/canvas", "tesseract.js", "tesseract.js-core", "@tesseract.js-data/por"],
+  // Arquivos lidos em tempo de execução pela leitura de PDFs escaneados (OCR).
+  outputFileTracingIncludes: {
+    "/api/projetos/**": [
+      "./node_modules/pdfjs-dist/legacy/build/**",
+      "./node_modules/pdfjs-dist/wasm/**",
+      "./node_modules/@tesseract.js-data/por/4.0.0_best_int/**",
+      "./node_modules/tesseract.js/src/**",
+      "./node_modules/tesseract.js-core/**",
+      "./node_modules/.pnpm/pdfjs-dist@*/node_modules/pdfjs-dist/legacy/build/**",
+      "./node_modules/.pnpm/pdfjs-dist@*/node_modules/pdfjs-dist/wasm/**",
+      "./node_modules/.pnpm/@tesseract.js-data+por@*/node_modules/@tesseract.js-data/por/4.0.0_best_int/**",
+      "./node_modules/.pnpm/tesseract.js@*/node_modules/tesseract.js/src/**",
+      "./node_modules/.pnpm/tesseract.js-core@*/node_modules/tesseract.js-core/**",
+    ],
+  },
   async headers() {
     return [
       {

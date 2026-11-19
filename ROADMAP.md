@@ -57,7 +57,7 @@ O produto atende dois tipos de memorial:
 - **Ponto de partida manual (D3)** quando o posicionamento automático não é seguro: escolher na base, digitar UTM ou lat/long, ou clicar no mapa de satélite, com pré-visualização.
 - Leitor de memorial tolerante a vários formatos: azimute antes ou depois do vértice de destino, rumos, tabela De/Para, coordenada inicial UTM ou geográfica, fuso ou meridiano central.
 - Memorial enviado como "coordenadas" que só tem azimutes passa sozinho para o fluxo por azimute.
-- **PDF escaneado (imagem, sem texto)**: memorial e rodapé da planta são lidos por visão com a API da Anthropic (`lib/azimute/ler-imagem.ts`), validados e seguem o mesmo fluxo. Requer `ANTHROPIC_API_KEY` na Vercel; sem ela, o sistema pede o preenchimento manual da tabela.
+- **PDF escaneado (imagem, sem texto)**: cascata de OCR (`lib/ocr/`), com a ordem escolhida pelo número de páginas e pelo tamanho do arquivo: Tesseract local (grátis, sem Docker) → Azure Document Intelligence (F0) → OCR.space → Google Cloud Vision → Claude. Cada leitura é conferida (vértices encadeados, fechamento e perímetro declarado) antes de ser aceita; senão passa ao próximo motor.
 
 ### Problemas conhecidos
 

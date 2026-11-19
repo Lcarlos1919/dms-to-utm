@@ -4,8 +4,8 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { MAX_PDF_SIZE } from "@/lib/pdf-validation"
 import { lerCoordenadaInicial, lerMemorial, type MemorialLido } from "@/lib/vertix-core/memorial"
 import { lerRodapePlanta } from "@/lib/vertix-core/planta"
-import { memorialDaTranscricao, numeroTranscrito, textoDaCoordenada } from "@/lib/vertix-core/transcricao"
-import { LeituraVisaoIndisponivel, transcreverMemorial, transcreverRodapePlanta } from "@/lib/azimute/ler-imagem"
+import { NOME_MOTOR } from "@/lib/vertix-core/ocr"
+import { lerMemorialEscaneado, lerRodapeEscaneado } from "@/lib/ocr/cascata"
 import { FUSO_PADRAO, type AzimuteDados } from "@/lib/azimute/tipos"
 
 const MAX_PAGINAS = 30
@@ -63,29 +63,28 @@ export async function lerDocumentosDoProjeto(memorialPath: string, plantaPath: s
     if (e instanceof ErroLeitura && e.codigo === "PDF_MUITO_GRANDE") throw e
     avisos.push("Não foi possível ler o texto do memorial.")
   }
-  // PDF escaneado (sem texto): lê por visão. Se a leitura não estiver disponível, a tabela fica para preencher.
+  // PDF escaneado (sem texto): cascata de OCR (Tesseract local → Azure/OCR.space grátis → Google → Claude).
   let memorial: MemorialLido | null = temTexto(memorialTexto) ? lerMemorial(memorialTexto) : null
   let textoCoordenada = memorial ? memorialTexto : ""
   let escaneado = false
   if (!memorial || memorial.segmentos.length < 3) {
     try {
-      const tr = await transcreverMemorial(memorialBytes)
-      const lido = memorialDaTranscricao(tr)
-      if (lido.segmentos.length >= 3 || !memorial) {
-        memorial = lido
-        textoCoordenada = textoDaCoordenada(tr) ?? ""
+      const lido = await lerMemorialEscaneado(memorialBytes)
+      if (lido && (lido.memorial.segmentos.length >= 3 || !memorial)) {
+        memorial = lido.memorial
+        textoCoordenada = lido.textoCoordenada
         escaneado = true
-        avisos.push("Memorial lido como imagem (PDF escaneado). Confira a tabela com o documento antes de seguir.")
+        avisos.push(
+          lido.aprovada
+            ? `Memorial lido como imagem (PDF escaneado) por ${NOME_MOTOR[lido.motor]}. Confira a tabela com o documento antes de seguir.`
+            : `Memorial lido como imagem por ${NOME_MOTOR[lido.motor]}, mas a conferência falhou (${lido.motivo}). Corrija a tabela com o documento ao lado.`,
+        )
+      } else if (!memorial) {
+        avisos.push("O PDF do memorial é uma imagem (sem texto) e nenhum leitor conseguiu extrair a tabela. Preencha a tabela manualmente.")
       }
     } catch (e) {
-      if (!memorial) {
-        avisos.push(
-          e instanceof LeituraVisaoIndisponivel
-            ? "O PDF do memorial é uma imagem (sem texto) e a leitura de PDFs escaneados não está ativada. Preencha a tabela manualmente."
-            : "O PDF do memorial é uma imagem (sem texto) e a leitura automática falhou. Tente de novo ou preencha a tabela manualmente.",
-        )
-      }
-      console.error("[azimute] leitura por visão do memorial falhou:", e instanceof Error ? e.message : e)
+      if (!memorial) avisos.push("O PDF do memorial é uma imagem (sem texto) e a leitura automática falhou. Tente de novo ou preencha a tabela manualmente.")
+      console.error("[azimute] leitura do memorial escaneado falhou:", e instanceof Error ? e.message : e)
     }
   }
 
@@ -97,13 +96,15 @@ export async function lerDocumentosDoProjeto(memorialPath: string, plantaPath: s
       const rodape = lerRodapePlanta(plantaTexto)
       if (!rodape.areaHa && !rodape.perimetroM && (escaneado || !temTexto(plantaTexto))) {
         try {
-          const r = await transcreverRodapePlanta(plantaBytes)
-          rodape.lote = r.lote?.replace(/^lote\s*/i, "").trim().toUpperCase() || rodape.lote
-          rodape.gleba = r.gleba?.replace(/^(gleba|gl)\s*-?\s*/i, "").trim().toUpperCase() || rodape.gleba
-          rodape.areaHa = numeroTranscrito(r.areaHa)
-          rodape.perimetroM = numeroTranscrito(r.perimetroM)
+          const r = await lerRodapeEscaneado(plantaBytes)
+          if (r) {
+            rodape.lote = r.lote || rodape.lote
+            rodape.gleba = r.gleba || rodape.gleba
+            rodape.areaHa = r.areaHa
+            rodape.perimetroM = r.perimetroM
+          }
         } catch (e) {
-          console.error("[azimute] leitura por visão da planta falhou:", e instanceof Error ? e.message : e)
+          console.error("[azimute] leitura da planta escaneada falhou:", e instanceof Error ? e.message : e)
         }
       }
       planta = {
