@@ -1,6 +1,6 @@
 import "server-only"
 
-export const MAX_PDF_SIZE = 10 * 1024 * 1024
+export const MAX_PDF_SIZE = 50 * 1024 * 1024
 
 type PdfBlobValidationResult =
   | { ok: true; sanitizedFileName: string; size: number }
@@ -29,7 +29,7 @@ export async function validatePdfBlob(blob: Blob, fileName: string): Promise<Pdf
   const sanitizedFileName = sanitizePdfFileName(fileName)
   if (!sanitizedFileName) return { ok: false, error: "O arquivo precisa ser um PDF válido." }
   if (blob.type !== "application/pdf" || blob.size > MAX_PDF_SIZE) {
-    return { ok: false, error: "O arquivo precisa ser um PDF válido de até 10 MB." }
+    return { ok: false, error: "O arquivo precisa ser um PDF válido de até 50 MB." }
   }
 
   const magic = new Uint8Array(await blob.slice(0, 4).arrayBuffer())

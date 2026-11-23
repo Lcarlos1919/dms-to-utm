@@ -1,6 +1,7 @@
 import "server-only"
 import type { ItemTexto } from "@/lib/topocad"
 import { ErroPdf, lerPaginasComOcr } from "@/lib/ocr/paginas"
+import { MAX_PDF_SIZE } from "@/lib/pdf-validation"
 
 const MAX_PAGINAS = 50
 export class ErroApp extends Error { constructor(public codigo: string, mensagem: string) { super(mensagem) } }
@@ -10,7 +11,7 @@ export class ErroApp extends Error { constructor(public codigo: string, mensagem
  * páginas digitalizadas passam pelo OCR (Azure), quando configurado.
  */
 export async function extrairItensComOcr(bytes: Uint8Array): Promise<{ paginas: ItemTexto[][]; avisos: string[] }> {
-  if (bytes.byteLength > 10 * 1024 * 1024) throw new ErroApp("PDF_MUITO_GRANDE", "O PDF deve ter no máximo 10 MB.")
+  if (bytes.byteLength > MAX_PDF_SIZE) throw new ErroApp("PDF_MUITO_GRANDE", "O PDF deve ter no máximo 50 MB.")
   let leitura: Awaited<ReturnType<typeof lerPaginasComOcr>>
   try {
     leitura = await lerPaginasComOcr(bytes, { maxPaginas: MAX_PAGINAS })

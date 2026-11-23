@@ -81,10 +81,10 @@ export async function POST(request: Request) {
   if (!memorialFileName) return erroApi(400, "MEMORIAL_INVALIDO", "O nome do memorial precisa identificar um PDF válido.")
   if (!plantaFileName) return erroApi(400, "PLANTA_INVALIDA", "O nome da planta precisa identificar um PDF válido.")
   if (body.data.memorial.type !== "application/pdf" || body.data.memorial.size > MAX_PDF_SIZE) {
-    return erroApi(400, "MEMORIAL_INVALIDO", "O memorial precisa ser um PDF válido de até 10 MB.")
+    return erroApi(400, "MEMORIAL_INVALIDO", "O memorial precisa ser um PDF válido de até 50 MB.")
   }
   if (body.data.planta.type !== "application/pdf" || body.data.planta.size > MAX_PDF_SIZE) {
-    return erroApi(400, "PLANTA_INVALIDA", "A planta precisa ser um PDF válido de até 10 MB.")
+    return erroApi(400, "PLANTA_INVALIDA", "A planta precisa ser um PDF válido de até 50 MB.")
   }
 
   const supabase = createAdminClient()
