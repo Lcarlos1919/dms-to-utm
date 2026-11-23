@@ -3,7 +3,7 @@ import "server-only"
 import { isStaleProcessing } from "@/lib/project-status"
 import { createAdminClient } from "@/lib/supabase/server"
 import { getUsageStatus, incrementUsage } from "@/lib/usage"
-import { ErroApp, extrairItensDoPdf } from "@/lib/pdf/extrair-itens"
+import { ErroApp, extrairItensComOcr } from "@/lib/pdf/extrair-itens"
 import { processarPaginas, reconstruirLinhas, type ResultadoMotor } from "@/lib/topocad"
 import { canUseFeature } from "@/lib/features"
 import { processarAzimute, type EtapaAzimute } from "@/lib/azimute/processar"
@@ -127,8 +127,8 @@ export async function processMemorial(projectId: string, userId: string): Promis
       throw new MemorialProcessingError("PDF_INVALIDO", "Não foi possível abrir o PDF enviado.")
     }
 
-    const pages = await extrairItensDoPdf(new Uint8Array(await file.arrayBuffer()))
-    const result = processarPaginas(pages)
+    const { paginas: pages, avisos: avisosOcr } = await extrairItensComOcr(new Uint8Array(await file.arrayBuffer()))
+    const result = processarPaginas(pages, {}, 2, avisosOcr.map((mensagem) => ({ codigo: "OCR_APLICADO" as const, mensagem })))
 
     // Sem coordenadas, mas com azimutes e distâncias: é um memorial por azimute.
     if (!result.ok && result.erro.codigo === "NENHUM_VERTICE") {
