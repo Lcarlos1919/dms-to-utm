@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { MAX_PDF_SIZE } from "@/lib/pdf-validation"
 import { lerMemorial } from "@/lib/vertix-core/memorial"
 import { lerRodapePlanta } from "@/lib/vertix-core/planta"
+import { ErroPdf, lerPaginasComOcr } from "@/lib/ocr/paginas"
 import { FUSO_PADRAO, type AzimuteDados } from "@/lib/azimute/tipos"
 
 const MAX_PAGINAS = 30
@@ -19,19 +20,19 @@ export class ErroLeitura extends Error {
   }
 }
 
-/** Texto de todas as páginas, na ordem de leitura. Roda só no servidor. */
-async function textoDoPdf(bytes: Uint8Array): Promise<string> {
+/**
+ * Texto de todas as páginas, na ordem de leitura. Páginas digitalizadas passam pelo OCR.
+ * Roda só no servidor.
+ */
+async function textoDoPdf(bytes: Uint8Array): Promise<{ texto: string; avisos: string[] }> {
   if (bytes.byteLength > MAX_PDF_SIZE) throw new ErroLeitura("PDF_MUITO_GRANDE", "O PDF excede o tamanho máximo permitido.")
-  const { getDocumentProxy, extractText } = await import("unpdf")
-  let pdf: Awaited<ReturnType<typeof getDocumentProxy>>
   try {
-    pdf = await getDocumentProxy(bytes)
-  } catch {
-    throw new ErroLeitura("PDF_INVALIDO", "Não foi possível abrir o PDF.")
+    const leitura = await lerPaginasComOcr(bytes, { maxPaginas: MAX_PAGINAS })
+    return { texto: leitura.texto, avisos: leitura.avisos }
+  } catch (e) {
+    if (e instanceof ErroPdf) throw new ErroLeitura(e.codigo, e.message)
+    throw e
   }
-  if (pdf.numPages > MAX_PAGINAS) throw new ErroLeitura("PDF_MUITO_GRANDE", `O PDF tem mais de ${MAX_PAGINAS} páginas.`)
-  const { text } = await extractText(pdf, { mergePages: true })
-  return text
 }
 
 async function baixar(path: string): Promise<Uint8Array> {
@@ -54,7 +55,9 @@ export async function lerDocumentosDoProjeto(memorialPath: string, plantaPath: s
   const memorialBytes = await baixar(memorialPath)
   let memorialTexto = ""
   try {
-    memorialTexto = await textoDoPdf(memorialBytes)
+    const leitura = await textoDoPdf(memorialBytes)
+    memorialTexto = leitura.texto
+    avisos.push(...leitura.avisos)
   } catch (e) {
     if (e instanceof ErroLeitura && e.codigo === "PDF_MUITO_GRANDE") throw e
     avisos.push("Não foi possível ler o texto do memorial.")
@@ -64,8 +67,9 @@ export async function lerDocumentosDoProjeto(memorialPath: string, plantaPath: s
   let planta: AzimuteDados["planta"] = {}
   if (plantaPath) {
     try {
-      const plantaTexto = await textoDoPdf(await baixar(plantaPath))
-      const rodape = lerRodapePlanta(plantaTexto)
+      const plantaLida = await textoDoPdf(await baixar(plantaPath))
+      avisos.push(...plantaLida.avisos.map((a) => `Planta: ${a}`))
+      const rodape = lerRodapePlanta(plantaLida.texto)
       planta = {
         lote: rodape.lote,
         gleba: rodape.gleba,

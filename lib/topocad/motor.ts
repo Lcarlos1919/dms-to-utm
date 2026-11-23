@@ -183,9 +183,10 @@ export function processarTexto(texto: string, opcoes: OpcoesMotor = {}): Resulta
 }
 
 /** Pipeline a partir dos itens de texto de cada página (unpdf / pdfjs-dist). */
-export function processarPaginas(paginas: ItemTexto[][], opcoes: OpcoesMotor = {}, tolY = 2): ResultadoMotor {
+export function processarPaginas(paginas: ItemTexto[][], opcoes: OpcoesMotor = {}, tolY = 2, avisosIniciais: Aviso[] = []): ResultadoMotor {
   const texto = paginas.map((p) => reconstruirLinhas(p, tolY).join("\n")).join("\n");
-  return processarTexto(texto, opcoes);
+  const resultado = processarTexto(texto, opcoes);
+  return avisosIniciais.length ? { ...resultado, avisos: [...avisosIniciais, ...resultado.avisos] } : resultado;
 }
 
 /**
