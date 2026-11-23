@@ -36,7 +36,7 @@ export interface PaginaAzure {
 interface RespostaAzure {
   status?: string
   analyzeResult?: { pages?: PaginaAzure[] }
-  error?: { code?: string; message?: string }
+  error?: { code?: string; message?: string; innerError?: { code?: string; message?: string } }
 }
 
 function lerConfiguracao(): { endpoint: string; chave: string } | null {
@@ -75,7 +75,9 @@ export function converterPaginasAzure(paginas: PaginaAzure[]): Map<number, ItemT
 async function mensagemDeErro(resposta: Response): Promise<string> {
   try {
     const corpo = (await resposta.json()) as RespostaAzure
-    if (corpo.error?.code) return `Serviço de OCR respondeu com erro (${corpo.error.code}).`
+    // O Azure costuma dar a causa real em innerError (ex.: InvalidContentLength, UnsupportedMediaType).
+    const codigo = corpo.error?.innerError?.code ?? corpo.error?.code
+    if (codigo) return `Serviço de OCR respondeu com erro (${corpo.error?.code ?? "desconhecido"}: ${codigo}).`
   } catch {
     // corpo não é JSON: usa a mensagem genérica abaixo
   }
