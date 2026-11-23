@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils"
 import { createProject } from "@/app/dashboard/novo/actions"
 import { useSupabase } from "@/lib/supabase/client"
 
-const MAX_SIZE = 10 * 1024 * 1024
+const MAX_SIZE = 50 * 1024 * 1024
 
 type Stage = "idle" | "creating" | "uploading" | "verifying" | "done" | "error"
 type MemorialType = "coordenadas" | "azimute"
@@ -67,7 +67,7 @@ function PdfUploadField({
         >
           <FileUp className="size-8 text-zinc-500" aria-hidden="true" />
           <span className="font-medium text-zinc-200">{title}</span>
-          <span className="text-sm text-zinc-500">ou clique para selecionar · máx. 10 MB</span>
+          <span className="text-sm text-zinc-500">ou clique para selecionar · máx. 50 MB</span>
         </button>
       </DashboardCard>
       <Input
@@ -155,7 +155,7 @@ export function UploadDropzone({
       return
     }
     if (selected.size > MAX_SIZE) {
-      setError("O arquivo deve ter no máximo 10 MB.")
+      setError("O arquivo deve ter no máximo 50 MB.")
       return
     }
 

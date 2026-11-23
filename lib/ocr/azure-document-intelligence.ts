@@ -7,6 +7,8 @@ const MODELO = "prebuilt-read"
 // Rotas da Vercel têm maxDuration de 60 s e o OCR pode rodar duas vezes numa mesma requisição
 // (memorial e planta): o limite por documento precisa caber nisso.
 const TEMPO_TOTAL_MS = 25_000
+// Envio do PDF (base64, até ~70 MB) precisa de mais folga que as consultas de resultado.
+const TEMPO_ENVIO_MS = 30_000
 const TEMPO_POR_CHAMADA_MS = 12_000
 
 export class ErroOcr extends Error {
@@ -98,7 +100,7 @@ export async function analisarPaginasComOcr(bytes: Uint8Array, paginas: number[]
       method: "POST",
       headers: { "Ocp-Apim-Subscription-Key": configuracao.chave, "Content-Type": "application/json" },
       body: JSON.stringify({ base64Source: Buffer.from(bytes).toString("base64") }),
-      signal: AbortSignal.timeout(TEMPO_POR_CHAMADA_MS),
+      signal: AbortSignal.timeout(TEMPO_ENVIO_MS),
     })
   } catch {
     throw new ErroOcr("OCR_FALHOU", "Não foi possível conectar ao serviço de OCR.")
