@@ -9,6 +9,8 @@ export type CodigoErro =
 
 export type CodigoAviso =
   | "OCR_APLICADO"
+  | "CORRECAO_AUTOMATICA"
+  | "SUSPEITA_DISTANCIA"
   | "POLIGONO_ABERTO"
   | "CODIGO_DUPLICADO"
   | "MULTIPLOS_FUSOS"

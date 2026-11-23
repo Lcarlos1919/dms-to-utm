@@ -14,12 +14,14 @@ export interface MemorialLido {
   municipio?: string; uf?: string;
   areaHa?: number; perimetroM?: number;
   inicio?: string;
+  /** Coordenada geográfica (lat/lon) de cada vértice que o memorial declara. */
+  coordenadas?: Record<string, { lat: number; lon: number }>;
   segmentos: Segmento[];
   avisos: string[];
 }
 
-const ID = '([A-Za-z]{1,4}\\s?-?\\s?\\d{1,4}[A-Za-z]?(?:-\\d+)?)';
-const limpaId = (s: string) => s.replace(/\s+/g, '').toUpperCase();
+const ID = '([A-Za-z]{1,4}\\s?[-–—]?\\s?\\d{1,4}[A-Za-z]?(?:-\\d+)?)';
+const limpaId = (s: string) => s.replace(/[–—]/g, '-').replace(/\s+/g, '').toUpperCase();
 const ANG_AZ = DMS_SRC;
 const ANG_RUMO = `([NS])\\s*${DMS_SRC}\\s*([EWLO])`;
 
@@ -56,7 +58,7 @@ export function lerMemorial(textoBruto: string): MemorialLido {
 
   // Segmentos: "[confrontando com X,] com azimute de A por uma distância de D m, até o ponto ID"
   const re = new RegExp(
-    `(?:segue\\s+confrontando\\s+com\\s+(.+?),\\s*)?(?:com\\s+)?(azimute|rumo)\\s+(?:de\\s+)?(?:(${ANG_RUMO})|(${ANG_AZ}))\\s*,?\\s*por\\s+uma\\s+dist[âa]ncia\\s+de\\s+([\\d.,]+)\\s*m(?:etros)?\\b[^,]*?,?\\s*at[ée]\\s+(?:o\\s+)?(?:ponto|v[ée]rtice|marco)\\s+${ID}`,
+    `(?:segue\\s+confrontando\\s+com\\s+(.+?),\\s*)?(?:com\\s+)?(azimute|rumo)\\s+(?:de\\s+)?(?:(${ANG_RUMO})|(${ANG_AZ}))\\s*,?\\s*por\\s+uma\\s+dist[âa]ncia\\s+de\\s+(\\d[\\d.,]*)\\s*(?:m(?:etros)?\\b)?[^,]*?,?\\s*at[ée]\\s+(?:o\\s+)?(?:ponto|v[ée]rtice|marco)\\s+${ID}`,
     'gi',
   );
   let cur = out.inicio ?? '';
@@ -89,6 +91,16 @@ export function lerMemorial(textoBruto: string): MemorialLido {
       if (!out.inicio) out.inicio = alt[0].de;
       avisos.push('Memorial lido por um formato alternativo: confira a tabela.');
     }
+  }
+
+  // Coordenadas geográficas por vértice: "vértice M - 07, de coordenadas de Lat: -11º40'49.537'' e Long: -62º42'36.440''"
+  const GEO = `(-?)\\s*(\\d{1,3})\\s*[°º˚]\\s*(\\d{1,2})\\s*['′’´]\\s*(\\d{1,2}(?:[.,]\\d+)?)`;
+  const reCoord = new RegExp(`(?:ponto|v[ée]rtice|marco)\\s+${ID}\\s*,?\\s*de\\s+coordenadas?\\s+(?:de\\s+)?Lat(?:itude)?\\.?\\s*:?\\s*${GEO}[^A-Za-z\\d-]*(?:e\\s+)?Long(?:itude)?\\.?\\s*:?\\s*${GEO}`, 'gi');
+  let c: RegExpExecArray | null;
+  while ((c = reCoord.exec(corpo))) {
+    const grau = (sinal: string, d: string, mi: string, se: string) => (sinal === '-' ? -1 : 1) * (Number(d) + Number(mi) / 60 + parseFloat(se.replace(',', '.')) / 3600);
+    const lat = grau(c[2], c[3], c[4], c[5]), lon = grau(c[6], c[7], c[8], c[9]);
+    if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180 && Number(c[4]) < 60 && Number(c[8]) < 60) (out.coordenadas ??= {})[limpaId(c[1])] ??= { lat, lon };
   }
 
   if (!out.segmentos.length) avisos.push('Nenhum segmento reconhecido: preencha a tabela manualmente.');

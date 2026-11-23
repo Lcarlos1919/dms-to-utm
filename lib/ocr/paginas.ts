@@ -31,7 +31,7 @@ function temTexto(pagina: string): boolean {
 }
 
 function listar(paginas: number[]): string {
-  return paginas.length === 1 ? `a página ${paginas[0]}` : `as páginas ${paginas.join(", ")}`
+  return paginas.length === 1 ? `na página ${paginas[0]}` : `nas páginas ${paginas.join(", ")}`
 }
 
 /**
@@ -66,7 +66,7 @@ export async function lerPaginasComOcr(bytes: Uint8Array, opcoes: { maxPaginas: 
       texto: textos.join("\n"),
       itens,
       paginasOcr: [],
-      avisos: [`Não há texto em ${listar(semTexto)} (digitalizada). Confira esta parte no documento original.`],
+      avisos: [`Não há texto ${listar(semTexto)} (digitalizada). O OCR não está configurado neste ambiente, então confira esta parte no documento original.`],
     }
   }
 
@@ -84,10 +84,10 @@ export async function lerPaginasComOcr(bytes: Uint8Array, opcoes: { maxPaginas: 
     }
     const naoLidas = semTexto.filter((n) => !lidas.includes(n))
     if (lidas.length) {
-      avisos.push(`Texto de ${listar(lidas)} foi reconhecido por OCR (digitalizada). Confira os números com o documento original.`)
+      avisos.push(`Texto ${listar(lidas)} foi reconhecido por OCR (digitalizada). Confira os números com o documento original.`)
     }
     if (naoLidas.length) {
-      avisos.push(`Não foi possível reconhecer o texto de ${listar(naoLidas)}. Confira no documento original.`)
+      avisos.push(`Não foi possível reconhecer o texto ${listar(naoLidas)}. Confira no documento original.`)
     }
     return { texto: textos.join("\n"), itens, paginasOcr: lidas, avisos }
   } catch (erro) {

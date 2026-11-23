@@ -8,8 +8,10 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "noEmitOnError": false,
-    "outDir": ".test-build/topocad",
-    "rootDir": "lib/topocad"
+    "outDir": ".test-build",
+    "rootDir": "lib"
   },
-  "include": ["lib/topocad/*.ts"]
+  "include": [
+    "lib/topocad/*.ts"
+  ]
 }
