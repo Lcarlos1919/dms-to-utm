@@ -38,18 +38,20 @@ export function lerMemorial(textoBruto: string): MemorialLido {
   const imv = /Im[óo]vel:\s*(.+?)(?=\s+Propriet|\s+Munic[íi]pio|$)/i.exec(t);
   if (imv) {
     out.imovel = imv[1].trim();
-    const l = /LOTE\s+([0-9]+[A-Za-z]*(?:-[A-Za-z]+)?)/i.exec(imv[1]);
+    // "LOTE: 07" e "GLEBA: 05" (formato impresso) e "LOTE 07" / "GLEBA 05" (formato corrido)
+    const l = /LOTE:?\s*([0-9]+[A-Za-z]*(?:-[A-Za-z]+)?)/i.exec(imv[1]);
     if (l) out.lote = l[1].toUpperCase();
-    const g = /GLEBA\s+([0-9]+[A-Za-z]?)\b/i.exec(imv[1]);
+    const g = /GLEBA:?\s*([0-9]+[A-Za-z]?)\b/i.exec(imv[1]);
     if (g) out.gleba = g[1].toUpperCase();
     const ng = /GLEBA\s+(?!\d)([A-ZÀ-Ú][A-ZÀ-Ú ]+?)\s*$/i.exec(imv[1]);
     if (ng) out.nomeGleba = ng[1].trim();
   }
   const mun = /Munic[íi]pio:\s*(.+?)\s+U\.?F:?\s*([A-Z]{2})/i.exec(t);
   if (mun) { out.municipio = mun[1].trim(); out.uf = mun[2]; }
-  const ar = /[ÁA]rea\s*\(ha\):\s*([\d.,]+)/i.exec(t);
+  // Cabeçalho impresso do INCRA/CEER: "ÁREA: 209,3554 ha   PER: 6.953,942 m" (além de "Área (ha):" e "Perímetro (m):")
+  const ar = /[ÁA]rea\s*\(ha\):\s*([\d.,]+)/i.exec(t) ?? /(?:^|\s)[ÁA]REA\s*:\s*([\d.,]+)\s*ha\b/.exec(t);
   if (ar) out.areaHa = num(ar[1]);
-  const pe = /Per[íi]metro\s*\(m\):\s*([\d.,]+)/i.exec(t);
+  const pe = /Per[íi]metro\s*\(m\):\s*([\d.,]+)/i.exec(t) ?? /\bPER\s*:\s*([\d.,]+)\s*m\b/.exec(t);
   if (pe) out.perimetroM = num(pe[1]);
 
   // Início
@@ -184,7 +186,10 @@ function lerAnguloAntes(t: string, inicio?: string): Segmento[] {
 
 /** Tabela "De Para Azimute Distância" (ex.: "P1 P2 92°33'41,91" 125,45"). */
 function lerTabela(t: string): Segmento[] {
-  const re = new RegExp(`${ID}\\s+(?:a\\s+|-\\s*|→\\s*)?${ID}\\s+${ANG_QUALQUER}\\s+([\\d.]+,\\d+|\\d+\\.\\d+|\\d+)\\s*(?:m\\b)?`, 'gi');
+  // Separador entre os vértices: espaço, travessão ou barra ("M - 44/M - 13").
+  // A unidade "m" só conta se não for seguida de hífen: sem isso, o "M" de "M-1376" (próximo vértice)
+  // era lido como unidade e a linha seguinte se perdia.
+  const re = new RegExp(`${ID}(?:\\s*[/]\\s*|\\s+)(?:a\\s+|-\\s*|→\\s*)?${ID}\\s+${ANG_QUALQUER}\\s+([\\d.]+,\\d+|\\d+\\.\\d+|\\d+)(?:\\s*m(?![\\w-]))?`, 'gi');
   const segs: Segmento[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(t))) {
