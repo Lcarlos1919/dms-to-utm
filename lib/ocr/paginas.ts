@@ -56,7 +56,9 @@ export async function lerPaginasComOcr(bytes: Uint8Array, opcoes: { maxPaginas: 
   const { getDocumentProxy, extractText, extractTextItems } = await import("unpdf")
   let pdf: Awaited<ReturnType<typeof getDocumentProxy>>
   try {
-    pdf = await getDocumentProxy(bytes)
+    // O pdf.js transfere o buffer ao worker e o desanexa: sem essa cópia, `bytes` fica com 0 bytes
+    // e o Azure e o Gemini recebem um PDF vazio (era a causa real do InvalidRequest).
+    pdf = await getDocumentProxy(bytes.slice())
   } catch {
     throw new ErroPdf("PDF_INVALIDO", "Não foi possível abrir o PDF.")
   }
