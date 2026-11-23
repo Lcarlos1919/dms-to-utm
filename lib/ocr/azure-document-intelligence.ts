@@ -77,7 +77,8 @@ async function mensagemDeErro(resposta: Response): Promise<string> {
     const corpo = (await resposta.json()) as RespostaAzure
     // O Azure costuma dar a causa real em innerError (ex.: InvalidContentLength, UnsupportedMediaType).
     const codigo = corpo.error?.innerError?.code ?? corpo.error?.code
-    if (codigo) return `Serviço de OCR respondeu com erro (${corpo.error?.code ?? "desconhecido"}: ${codigo}).`
+    const detalhe = (corpo.error?.innerError?.message ?? corpo.error?.message ?? "").replace(/\s+/g, " ").slice(0, 200)
+    if (codigo) return `Serviço de OCR respondeu com erro (${corpo.error?.code ?? "desconhecido"}: ${codigo}${detalhe ? ` – ${detalhe}` : ""}).`
   } catch {
     // corpo não é JSON: usa a mensagem genérica abaixo
   }
