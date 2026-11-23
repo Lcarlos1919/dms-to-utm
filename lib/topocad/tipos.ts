@@ -8,6 +8,7 @@ export type CodigoErro =
   | "COORDENADA_INVALIDA";
 
 export type CodigoAviso =
+  | "OCR_APLICADO"
   | "POLIGONO_ABERTO"
   | "CODIGO_DUPLICADO"
   | "MULTIPLOS_FUSOS"
