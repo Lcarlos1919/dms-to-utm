@@ -19,7 +19,11 @@ export async function extrairItensComOcr(bytes: Uint8Array): Promise<{ paginas: 
     if (e instanceof ErroPdf) throw new ErroApp(e.codigo, e.message)
     throw e
   }
-  if (leitura.itens.every((p) => p.length === 0)) throw new ErroApp("PDF_SEM_TEXTO", "O PDF não contém texto selecionável.")
+  if (leitura.itens.every((p) => p.length === 0)) {
+    // Mostra o motivo (OCR desligado, falhou ou sem texto) em vez de uma mensagem genérica.
+    const motivo = leitura.avisos.join(" ")
+    throw new ErroApp("PDF_SEM_TEXTO", motivo ? `O PDF não contém texto selecionável. ${motivo}` : "O PDF não contém texto selecionável.")
+  }
   return { paginas: leitura.itens, avisos: leitura.avisos }
 }
 

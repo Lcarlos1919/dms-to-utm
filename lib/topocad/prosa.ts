@@ -1,5 +1,5 @@
-import { lerMemorial } from "@/lib/vertix-core/memorial";
-import { corrigirDistancias, textoCorrecao } from "@/lib/vertix-core/correcao";
+import { lerMemorial } from "../vertix-core/memorial";
+import { corrigirDistancias, textoCorrecao } from "../vertix-core/correcao";
 import type { EntradaVertice } from "./motor";
 import type { Aviso } from "./tipos";
 

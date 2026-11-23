@@ -8,7 +8,7 @@
     "lint": "eslint .",
     "start": "next start",
     "test:kml": "node --experimental-strip-types --test lib/export/kml.test.mjs",
-    "test:azimute": "tsc -p tsconfig.vertix-test.json && node --test lib/vertix-core/vertix-core.test.mjs",
+    "test:azimute": "tsc -p tsconfig.vertix-test.json && node --test lib/vertix-core/vertix-core.test.mjs lib/vertix-core/memorial-texto.test.mjs",
     "test:topocad": "tsc -p tsconfig.topocad-test.json && tsc -p tsconfig.vertix-test.json && node --test lib/topocad/topocad.test.mjs",
     "test:ocr": "node --experimental-strip-types --test lib/ocr/azure-document-intelligence.test.mjs",
     "test": "pnpm run test:kml && pnpm run test:azimute && pnpm run test:topocad && pnpm run test:ocr"

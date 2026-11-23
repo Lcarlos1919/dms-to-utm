@@ -20,8 +20,8 @@ export interface MemorialLido {
   avisos: string[];
 }
 
-const ID = '([A-Za-z]{1,4}\\s?-?\\s?\\d{1,4}[A-Za-z]?(?:-\\d+)?)';
-const limpaId = (s: string) => s.replace(/\s+/g, '').toUpperCase();
+const ID = '([A-Za-z]{1,4}\\s?[-–—]?\\s?\\d{1,4}[A-Za-z]?(?:-\\d+)?)';
+const limpaId = (s: string) => s.replace(/[–—]/g, '-').replace(/\s+/g, '').toUpperCase();
 const ANG_AZ = DMS_SRC;
 const ANG_RUMO = `([NS])\\s*${DMS_SRC}\\s*([EWLO])`;
 
@@ -58,7 +58,7 @@ export function lerMemorial(textoBruto: string): MemorialLido {
 
   // Segmentos: "[confrontando com X,] com azimute de A por uma distância de D m, até o ponto ID"
   const re = new RegExp(
-    `(?:segue\\s+confrontando\\s+com\\s+(.+?),\\s*)?(?:com\\s+)?(azimute|rumo)\\s+(?:de\\s+)?(?:(${ANG_RUMO})|(${ANG_AZ}))\\s*,?\\s*por\\s+uma\\s+dist[âa]ncia\\s+de\\s+([\\d.,]+)\\s*m(?:etros)?\\b[^,]*?,?\\s*at[ée]\\s+(?:o\\s+)?(?:ponto|v[ée]rtice|marco)\\s+${ID}`,
+    `(?:segue\\s+confrontando\\s+com\\s+(.+?),\\s*)?(?:com\\s+)?(azimute|rumo)\\s+(?:de\\s+)?(?:(${ANG_RUMO})|(${ANG_AZ}))\\s*,?\\s*por\\s+uma\\s+dist[âa]ncia\\s+de\\s+(\\d[\\d.,]*)\\s*(?:m(?:etros)?\\b)?[^,]*?,?\\s*at[ée]\\s+(?:o\\s+)?(?:ponto|v[ée]rtice|marco)\\s+${ID}`,
     'gi',
   );
   let cur = out.inicio ?? '';

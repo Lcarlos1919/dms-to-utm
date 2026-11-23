@@ -162,24 +162,20 @@ export function processarTexto(texto: string, opcoes: OpcoesMotor = {}): Resulta
     return { ok: false, erro: parametros.erro, avisos: parametros.avisos };
   }
 
-  let { vertices, avisos } = extrairVertices(texto);
+  const opcoesFuso = {
+    ...opcoes,
+    fusoDeclarado: opcoes.fusoDeclarado ?? parametros.parametros.fusoDeclarado,
+    hemisferioDeclarado: opcoes.hemisferioDeclarado ?? parametros.parametros.hemisferioDeclarado,
+  };
+  const { vertices, avisos } = extrairVertices(texto);
   // Sem tabela: tenta o memorial em texto corrido (coordenadas escritas em cada vértice).
   if (vertices.length === 0) {
     const prosa = verticesDeProsa(texto);
     if (prosa.vertices.length) {
-      vertices = prosa.vertices;
-      avisos = [...avisos, ...prosa.avisos];
+      return processarVertices(prosa.vertices, opcoesFuso, [...parametros.avisos, ...avisos, ...prosa.avisos]);
     }
   }
-  return processarVertices(
-    vertices,
-    {
-      ...opcoes,
-      fusoDeclarado: opcoes.fusoDeclarado ?? parametros.parametros.fusoDeclarado,
-      hemisferioDeclarado: opcoes.hemisferioDeclarado ?? parametros.parametros.hemisferioDeclarado,
-    },
-    [...parametros.avisos, ...avisos],
-  );
+  return processarVertices(vertices, opcoesFuso, [...parametros.avisos, ...avisos]);
 }
 
 /** Pipeline a partir dos itens de texto de cada página (unpdf / pdfjs-dist). */
