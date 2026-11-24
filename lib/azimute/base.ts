@@ -5,6 +5,7 @@ import { buscarAncoras } from "@/lib/vertix-core/ancora"
 import { aneilParaUtm, localizarLote, type Anel, type Consulta } from "@/lib/vertix-core/fundiario"
 import type { Segmento } from "@/lib/vertix-core/memorial"
 import { decidirAncora, type DecisaoAncora } from "@/lib/vertix-core/montagem"
+import { buscarSigef, ordenarPeloSigef } from "@/lib/vertix-core/sigef"
 import { calcularPoligonal } from "@/lib/vertix-core/poligonal"
 import type { BaseFundiaria, CandidataSalva } from "@/lib/azimute/tipos"
 
@@ -57,7 +58,22 @@ export async function localizarNaBase(consulta: Consulta, segmentos: Segmento[])
   const rpc = (fn: string, args: Record<string, unknown>) => db.rpc(fn, args)
   const { escolha } = await localizarLote(consulta, { rpc, preferencia: config.preferencia, timeoutMs: config.timeoutMs })
   const avisos = [...escolha.avisos]
-  const lote = escolha.escolhido
+  let lote = escolha.escolhido
+  // Coador SIGEF: entre os candidatos do SIGLO, fica o que não corta parcela certificada.
+  if (lote?.aneis.length) {
+    const sigef = await buscarSigef(lote.aneis, { timeoutMs: config.timeoutMs })
+    if (!sigef.ok) {
+      avisos.push(`SIGEF indisponível (${sigef.erro}): o lote não foi conferido pelas parcelas certificadas.`)
+    } else {
+      const candidatos = [lote, ...escolha.alternativas.filter((a) => a !== lote)]
+      const { ordem, avisos: avisosSigef } = ordenarPeloSigef(candidatos, sigef.parcelas)
+      avisos.push(...avisosSigef)
+      lote = ordem[0]
+      const s = lote.sigef
+      if (s.situacao === "coincide") avisos.push(`Lote confirmado pelo SIGEF (imóvel ${s.parcela?.codigoImo ?? "certificado"}).`)
+      else if (s.situacao === "sem_sobreposicao") avisos.push("Nenhuma parcela certificada no SIGEF cobre este lote.")
+    }
+  }
   if (!lote || !lote.aneis.length) {
     return { base: null, candidatas: [], decisao: null, motivo: escolha.motivo, avisos }
   }
