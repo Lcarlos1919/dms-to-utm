@@ -27,3 +27,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .test-build/
+
+# saída compilada dos testes (npx tsc -p tsconfig.vertix-test.json)
+.test-build/
