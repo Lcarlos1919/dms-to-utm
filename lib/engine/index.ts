@@ -165,7 +165,8 @@ export async function processMemorial(projectId: string, userId: string): Promis
     // Sem coordenadas, mas com azimutes e distâncias: é um memorial por azimute.
     if (!result.ok && result.erro.codigo === "NENHUM_VERTICE") {
       const texto = pages.map((p) => reconstruirLinhas(p).join("\n")).join("\n")
-      const segmentosLidos = lerMemorial(texto).segmentos.length
+      const leituraAzimute = lerMemorial(texto)
+      const segmentosLidos = leituraAzimute.segmentos.length
       const permitidoPeloPlano = segmentosLidos >= 3 ? await canUseFeature(userId, "memorial_azimute") : false
       registrar(
         diagnostico,
@@ -176,7 +177,7 @@ export async function processMemorial(projectId: string, userId: string): Promis
           : permitidoPeloPlano
             ? "Sem coordenadas e com azimutes: convertendo para o fluxo por azimute."
             : "Sem coordenadas e com azimutes, mas o plano do usuário não tem o fluxo por azimute.",
-        { segmentosLidos, minimoSegmentos: 3, permitidoPeloPlano },
+        { segmentosLidos, minimoSegmentos: 3, permitidoPeloPlano, conferencia: leituraAzimute.conferencia ?? null },
       )
       if (segmentosLidos >= 3 && permitidoPeloPlano) {
         const { data: convertido } = await db

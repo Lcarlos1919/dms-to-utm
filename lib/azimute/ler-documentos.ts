@@ -6,6 +6,7 @@ import { lerCoordenadaInicial, lerMemorial } from "@/lib/vertix-core/memorial"
 import { lerRodapePlanta } from "@/lib/vertix-core/planta"
 import { corrigirDistancias, textoCorrecao } from "@/lib/vertix-core/correcao"
 import { ErroPdf, lerPaginasComOcr } from "@/lib/ocr/paginas"
+import { geminiConfigurado, transcreverPaginasComGemini } from "@/lib/ocr/gemini"
 import { FUSO_PADRAO, type AzimuteDados } from "@/lib/azimute/tipos"
 
 const MAX_PAGINAS = 30
@@ -47,6 +48,36 @@ export interface ResultadoLeitura {
 }
 
 /**
+ * Filtro de verificação com a segunda API: relê o memorial inteiro com o Gemini e só aceita a leitura
+ * se a poligonal dela fecha (fechamento, PER e área). Nunca troca uma leitura válida por outra não validada.
+ */
+async function conferirComSegundaLeitura(
+  bytes: Uint8Array,
+  atual: ReturnType<typeof lerMemorial> | null,
+  avisos: string[],
+): Promise<ReturnType<typeof lerMemorial> | null> {
+  const precisa = !atual || atual.segmentos.length === 0 || (atual.conferencia !== undefined && !atual.conferencia.valido)
+  if (!precisa || !geminiConfigurado()) return atual
+  try {
+    const { getDocumentProxy } = await import("unpdf")
+    const pdf = await getDocumentProxy(bytes.slice())
+    const paginas = Array.from({ length: Math.min(pdf.numPages, MAX_PAGINAS) }, (_, i) => i + 1)
+    const transcritas = await transcreverPaginasComGemini(bytes, paginas)
+    const texto = paginas.map((n) => transcritas.get(n) ?? "").join("\n")
+    const segunda = lerMemorial(texto)
+    if (segunda.conferencia?.valido) {
+      avisos.push("Tabela do perímetro conferida pela segunda leitura (Gemini): a poligonal fecha com o PER e a área. Confira com o documento original.")
+      return segunda
+    }
+    avisos.push(`A segunda leitura (Gemini) também não fechou a poligonal${segunda.conferencia ? `: ${segunda.conferencia.problemas.join("; ")}` : ""}. Revise a tabela.`)
+    return atual
+  } catch {
+    avisos.push("Não foi possível fazer a segunda leitura (Gemini) da tabela do perímetro.")
+    return atual
+  }
+}
+
+/**
  * Lê memorial e planta do projeto e monta o JSON de azimute_dados.
  * Não guarda o texto dos PDFs nem o nome do proprietário.
  */
@@ -82,7 +113,7 @@ export async function lerDocumentosDoProjeto(memorialPath: string, plantaPath: s
     }
   }
 
-  const memorial = memorialTexto.trim() ? lerMemorial(memorialTexto) : null
+  const memorial = await conferirComSegundaLeitura(memorialBytes, memorialTexto.trim() ? lerMemorial(memorialTexto) : null, avisos)
   if (memorial) avisos.push(...memorial.avisos)
   let segmentos = (memorial?.segmentos ?? []).map((s) => ({
     de: s.de,
