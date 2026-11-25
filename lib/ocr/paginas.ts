@@ -4,6 +4,7 @@ import type { ItemTexto } from "@/lib/topocad/tipos"
 import { reconstruirLinhas } from "@/lib/topocad/texto"
 import { analisarPaginasComOcr, ErroOcr, ocrConfigurado } from "@/lib/ocr/azure-document-intelligence"
 import { ErroGemini, geminiConfigurado, transcreverPaginasComGemini } from "@/lib/ocr/gemini"
+import { analisarPaginasComVision, ErroVision, visionConfigurado } from "@/lib/ocr/google-vision"
 
 /** Página com menos caracteres que isso é tratada como digitalizada (imagem). */
 const MIN_CARACTERES_PAGINA = 15
@@ -77,7 +78,7 @@ export async function lerPaginasComOcr(bytes: Uint8Array, opcoes: { maxPaginas: 
     return { texto: text as string, itens, paginasOcr: [], avisos: [] }
   }
 
-  if (!ocrConfigurado() && !geminiConfigurado()) {
+  if (!ocrConfigurado() && !visionConfigurado() && !geminiConfigurado()) {
     return {
       texto: textos.join("\n"),
       itens,
@@ -106,9 +107,28 @@ export async function lerPaginasComOcr(bytes: Uint8Array, opcoes: { maxPaginas: 
     }
   }
 
+  const lidasVision: number[] = []
+  let motivoVision: string | null = null
+  let restantes = semTexto.filter((n) => !lidas.includes(n))
+  if (restantes.length && visionConfigurado()) {
+    try {
+      const resultado = await analisarPaginasComVision(bytes, restantes)
+      for (const numero of restantes) {
+        const itensVision = resultado.get(numero) ?? []
+        if (itensVision.length) {
+          itens[numero - 1] = itensVision
+          textos[numero - 1] = reconstruirLinhas(itensVision, 4).join("\n")
+          lidasVision.push(numero)
+        }
+      }
+    } catch (erro) {
+      motivoVision = erro instanceof ErroVision ? erro.message : "Falha inesperada na Cloud Vision."
+    }
+    restantes = restantes.filter((n) => !lidasVision.includes(n))
+  }
+
   let lidasGemini: number[] = []
   let motivoGemini: string | null = null
-  const restantes = semTexto.filter((n) => !lidas.includes(n))
   if (restantes.length && geminiConfigurado()) {
     try {
       const transcritas = await transcreverPaginasComGemini(bytes, restantes)
@@ -128,13 +148,16 @@ export async function lerPaginasComOcr(bytes: Uint8Array, opcoes: { maxPaginas: 
   if (lidas.length) {
     avisos.push(`Texto ${listar(lidas)} foi reconhecido por OCR (digitalizada). Confira os números com o documento original.`)
   }
+  if (lidasVision.length) {
+    avisos.push(`Texto ${listar(lidasVision)} foi reconhecido pela Cloud Vision (digitalizada). Confira os números com o documento original.`)
+  }
   if (lidasGemini.length) {
     avisos.push(`Texto ${listar(lidasGemini)} foi reconhecido pela segunda via (Gemini), porque o OCR principal não leu. Confira os números com o documento original.`)
   }
 
-  const naoLidas = semTexto.filter((n) => !lidas.includes(n) && !lidasGemini.includes(n))
+  const naoLidas = semTexto.filter((n) => !lidas.includes(n) && !lidasVision.includes(n) && !lidasGemini.includes(n))
   if (naoLidas.length) {
-    const motivos = [motivoAzure, motivoGemini].filter(Boolean).join(" ")
+    const motivos = [motivoAzure, motivoVision, motivoGemini].filter(Boolean).join(" ")
     avisos.push(
       motivos
         ? `Não foi possível ler ${listar(naoLidas)}. ${motivos} Confira no documento original.`
@@ -145,7 +168,7 @@ export async function lerPaginasComOcr(bytes: Uint8Array, opcoes: { maxPaginas: 
   return {
     texto: textos.join("\n"),
     itens,
-    paginasOcr: [...lidas, ...lidasGemini],
+    paginasOcr: [...lidas, ...lidasVision, ...lidasGemini],
     avisos,
   }
 }
