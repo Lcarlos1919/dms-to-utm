@@ -43,10 +43,19 @@ export const normalizar = (s: unknown) =>
   String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
 const numeroInicial = (s: string) => /^\d+/.exec(s)?.[0];
 
+/** O nome do memorial ("Gleba Rio Branco São Miguel") casa com o da base se contiver todas as palavras-chave dele. */
+export function nomeCasa(nomeMemorial: string | undefined, nomeBase: string): boolean {
+  if (!nomeMemorial?.trim()) return true;
+  const alvo = normalizar(nomeBase);
+  if (alvo.includes(normalizar(nomeMemorial))) return true;
+  const palavras = normalizar(nomeMemorial).split(' ').filter(w => w.length >= 3 && w !== 'GLEBA');
+  return palavras.length > 0 && palavras.every(w => alvo.includes(w));
+}
+
 function confere(q: Consulta, nome: string, gleba: string, lote: string) {
   const ql = normalizar(q.lote), l = normalizar(lote);
   return {
-    nome: !q.nomeGleba || normalizar(nome).includes(normalizar(q.nomeGleba)),
+    nome: nomeCasa(q.nomeGleba, nome),
     gleba: !q.gleba || normalizar(gleba) === normalizar(q.gleba),
     lote: l === ql || (!!numeroInicial(ql) && numeroInicial(ql) === numeroInicial(l)),
   };
