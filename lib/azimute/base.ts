@@ -68,8 +68,10 @@ export async function localizarNaBase(consulta: Consulta, segmentos: Segmento[])
       const candidatos = [lote, ...escolha.alternativas.filter((a) => a !== lote)]
       const { ordem, avisos: avisosSigef } = ordenarPeloSigef(candidatos, sigef.parcelas)
       avisos.push(...avisosSigef)
-      lote = ordem[0]
-      const s = lote.sigef
+      // Guardado em constante para o TypeScript manter o tipo com `sigef` (a atribuição a `lote` estreitaria para LoteBase).
+      const melhor = ordem[0]
+      lote = melhor
+      const s = melhor.sigef
       if (s.situacao === "coincide") avisos.push(`Lote confirmado pelo SIGEF (imóvel ${s.parcela?.codigoImo ?? "certificado"}).`)
       else if (s.situacao === "sem_sobreposicao") avisos.push("Nenhuma parcela certificada no SIGEF cobre este lote.")
     }
