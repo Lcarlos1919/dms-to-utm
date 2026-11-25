@@ -123,6 +123,8 @@ export function lerMemorial(textoBruto: string): MemorialLido {
     if (tab.ok) {
       out.segmentos = tab.segmentos;
       out.inicio ??= tab.segmentos[0].de;
+      // A tabela já fecha no próprio ponto inicial: o aviso de "não volta ao ponto inicial" não se aplica.
+      cur = tab.segmentos[tab.segmentos.length - 1].para;
       avisos.push('Azimutes e distâncias lidos da tabela do perímetro (LADOS / AZIMUTES / COMPRIMENTOS).');
     } else if (tab.motivo) {
       avisos.push(tab.motivo);

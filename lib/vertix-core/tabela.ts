@@ -66,7 +66,9 @@ export function lerTabelaPerimetro(texto: string): TabelaLida {
   for (const m of regiao.matchAll(RE_AZIMUTE)) {
     const graus = Number(m[1]), minutos = Number(m[2]), segundos = Number(m[3].replace(",", "."))
     if (minutos >= 60 || segundos >= 60 || graus > 360) continue
-    tokens.push({ pos: m.index ?? 0, tipo: "azimute", valor: norm360(azimuteDeDms(graus, minutos, segundos)), original: m[0].trim() })
+    // Texto canônico (90°29'42.00") para a tabela de revisão, qualquer que seja a forma que o OCR devolveu.
+    const canonico = `${graus}°${String(minutos).padStart(2, "0")}'${segundos.toFixed(2).padStart(5, "0")}"`
+    tokens.push({ pos: m.index ?? 0, tipo: "azimute", valor: norm360(azimuteDeDms(graus, minutos, segundos)), original: canonico })
   }
   for (const m of regiao.matchAll(RE_DISTANCIA)) {
     const d = numeroDistancia(m[0])
