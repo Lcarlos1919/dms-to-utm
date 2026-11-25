@@ -9,7 +9,7 @@ import { canUseFeature } from "@/lib/features"
 import { processarAzimute, type EtapaAzimute } from "@/lib/azimute/processar"
 import { lerMemorial } from "@/lib/vertix-core/memorial"
 import { projetoDoResultado, verticeParaLinha } from "@/lib/topocad-db/mapeamento"
-import { criarDiagnostico, gravarDiagnostico, registrar, resumirPilha } from "@/lib/engine/diagnostico"
+import { contarPistas, criarDiagnostico, gravarDiagnostico, registrar, resumirPilha } from "@/lib/engine/diagnostico"
 
 export type ProcessResult =
   | { ok: true; result: Extract<ResultadoMotor, { ok: true }> }
@@ -144,6 +144,8 @@ export async function processMemorial(projectId: string, userId: string): Promis
       paginasComTexto: pages.filter((p) => p.length > 0).length,
       itensPorPagina: pages.map((p) => p.length),
       avisosOcr,
+      // Texto como o motor recebeu (para diagnosticar o que o OCR leu). Limitado em tamanho.
+      textoPorPagina: pages.map((p) => reconstruirLinhas(p).slice(0, 120).map((linha) => linha.slice(0, 240))),
     })
     const result = processarPaginas(pages, {}, 2, avisosOcr.map((mensagem) => ({ codigo: "OCR_APLICADO" as const, mensagem })))
     registrar(
@@ -153,7 +155,11 @@ export async function processMemorial(projectId: string, userId: string): Promis
       result.ok ? "Vértices calculados." : result.erro.mensagem,
       result.ok
         ? { vertices: result.vertices.length, avisos: result.avisos }
-        : { codigo: result.erro.codigo, avisos: result.avisos },
+        : {
+            codigo: result.erro.codigo,
+            avisos: result.avisos,
+            contagens: contarPistas(pages.map((p) => reconstruirLinhas(p).join("\n")).join("\n")),
+          },
     )
 
     // Sem coordenadas, mas com azimutes e distâncias: é um memorial por azimute.

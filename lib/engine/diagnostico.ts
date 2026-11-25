@@ -40,6 +40,23 @@ export function registrar(
   diagnostico.eventos.push({ hora: new Date().toISOString(), etapa, nivel, mensagem, ...(dados ? { dados } : {}) })
 }
 
+/** Conta palavras-chave do texto lido: ajuda a ver por que a tabela de vértices não foi achada. */
+export function contarPistas(texto: string): Record<string, number> {
+  const contar = (re: RegExp) => (texto.match(re) ?? []).length
+  return {
+    caracteres: texto.length,
+    azimute: contar(/azimute/gi),
+    rumo: contar(/rumo/gi),
+    distancia: contar(/dist[âa]ncia/gi),
+    vertice: contar(/v[ée]rtice/gi),
+    ponto: contar(/\bponto\b/gi),
+    coordenadas: contar(/coordenad/gi),
+    latitude: contar(/lat(itude)?\b/gi),
+    grau: contar(/[°º˚]/g),
+    metros: contar(/\bm\b|metros/gi),
+  }
+}
+
 /** Resume a pilha do erro em poucas linhas (o suficiente para achar o ponto do código). */
 export function resumirPilha(erro: unknown): string[] {
   if (!(erro instanceof Error) || !erro.stack) return []
