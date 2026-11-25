@@ -1,4 +1,5 @@
 import { DMS_SRC, dmsToDeg, norm360, num, rumoToAzimute } from './angulos';
+import { conferirPoligonal, lerTabelaPerimetro, type Conferencia } from './tabela';
 
 export interface Segmento {
   de: string;
@@ -17,6 +18,8 @@ export interface MemorialLido {
   /** Coordenada geográfica (lat/lon) de cada vértice que o memorial declara. */
   coordenadas?: Record<string, { lat: number; lon: number }>;
   segmentos: Segmento[];
+  /** Conferência da poligonal (fechamento, PER e área), quando há segmentos. */
+  conferencia?: Conferencia;
   avisos: string[];
 }
 
@@ -51,8 +54,17 @@ export function lerMemorial(textoBruto: string): MemorialLido {
   // Cabeçalho impresso do INCRA/CEER: "ÁREA: 209,3554 ha   PER: 6.953,942 m" (além de "Área (ha):" e "Perímetro (m):")
   const ar = /[ÁA]rea\s*\(ha\):\s*([\d.,]+)/i.exec(t) ?? /(?:^|\s)[ÁA]REA\s*:\s*([\d.,]+)\s*ha\b/.exec(t);
   if (ar) out.areaHa = num(ar[1]);
+  // Cabeçalho sem rótulo (OCR): "ÁREA m 51,5297 ha. PER: 4.623,040".
+  else {
+    const areaSem = /[ÁA]REA[^\d]{0,20}([\d.]+,\d+)\s*ha\b/i.exec(t);
+    if (areaSem) out.areaHa = num(areaSem[1]);
+  }
   const pe = /Per[íi]metro\s*\(m\):\s*([\d.,]+)/i.exec(t) ?? /\bPER\s*:\s*([\d.,]+)\s*m\b/.exec(t);
   if (pe) out.perimetroM = num(pe[1]);
+  else {
+    const perSem = /\bPER\s*:?\s*([\d.]+,\d+)/i.exec(t);
+    if (perSem) out.perimetroM = num(perSem[1]);
+  }
 
   // Início
   const ini = new RegExp(`Inicia-se[^.]*?\\b(?:ponto|v[ée]rtice|marco)\\s+${ID}`, 'i').exec(t);
@@ -105,6 +117,21 @@ export function lerMemorial(textoBruto: string): MemorialLido {
     if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180 && Number(c[4]) < 60 && Number(c[8]) < 60) (out.coordenadas ??= {})[limpaId(c[1])] ??= { lat, lon };
   }
 
+  // Tabela LADOS / AZIMUTES / COMPRIMENTOS do perímetro (quando não há frases de azimute).
+  if (!out.segmentos.length) {
+    const tab = lerTabelaPerimetro(t);
+    if (tab.ok) {
+      out.segmentos = tab.segmentos;
+      out.inicio ??= tab.segmentos[0].de;
+      avisos.push('Azimutes e distâncias lidos da tabela do perímetro (LADOS / AZIMUTES / COMPRIMENTOS).');
+    } else if (tab.motivo) {
+      avisos.push(tab.motivo);
+    }
+  }
+  if (out.segmentos.length >= 3) {
+    out.conferencia = conferirPoligonal(out.segmentos, { perimetroM: out.perimetroM, areaHa: out.areaHa });
+    if (!out.conferencia.valido) avisos.push(`Conferência da tabela falhou: ${out.conferencia.problemas.join('; ')}.`);
+  }
   if (!out.segmentos.length) avisos.push('Nenhum segmento reconhecido: preencha a tabela manualmente.');
   else {
     if (out.inicio && cur !== out.inicio) avisos.push(`A descrição não volta ao ponto inicial (${out.inicio}); último ponto: ${cur}.`);
