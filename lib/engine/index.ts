@@ -9,6 +9,7 @@ import { canUseFeature } from "@/lib/features"
 import { processarAzimute, type EtapaAzimute } from "@/lib/azimute/processar"
 import { lerMemorial } from "@/lib/vertix-core/memorial"
 import { projetoDoResultado, verticeParaLinha } from "@/lib/topocad-db/mapeamento"
+import { criarDiagnostico, gravarDiagnostico, registrar, resumirPilha } from "@/lib/engine/diagnostico"
 
 export type ProcessResult =
   | { ok: true; result: Extract<ResultadoMotor, { ok: true }> }
@@ -117,6 +118,11 @@ export async function processMemorial(projectId: string, userId: string): Promis
   }
 
   let terminalUpdatedAt = claimedProject.updated_at
+  const diagnostico = criarDiagnostico(projectId)
+  registrar(diagnostico, "inicio", "info", "Processamento iniciado.", {
+    statusAnterior: project.status,
+    memorialType: project.memorial_type ?? null,
+  })
 
   try {
     const { data: file, error: downloadError } = await db.storage
@@ -124,16 +130,49 @@ export async function processMemorial(projectId: string, userId: string): Promis
       .download(project.source_pdf_path)
 
     if (downloadError || !file) {
+      registrar(diagnostico, "download", "erro", "Não foi possível baixar o PDF do armazenamento.", {
+        caminho: project.source_pdf_path,
+        erroStorage: downloadError?.message ?? "arquivo vazio",
+      })
       throw new MemorialProcessingError("PDF_INVALIDO", "Não foi possível abrir o PDF enviado.")
     }
+    registrar(diagnostico, "download", "info", "PDF baixado.", { bytes: file.size })
 
     const { paginas: pages, avisos: avisosOcr } = await extrairItensComOcr(new Uint8Array(await file.arrayBuffer()))
+    registrar(diagnostico, "ocr", "info", "Texto extraído (nativo e OCR).", {
+      paginas: pages.length,
+      paginasComTexto: pages.filter((p) => p.length > 0).length,
+      itensPorPagina: pages.map((p) => p.length),
+      avisosOcr,
+    })
     const result = processarPaginas(pages, {}, 2, avisosOcr.map((mensagem) => ({ codigo: "OCR_APLICADO" as const, mensagem })))
+    registrar(
+      diagnostico,
+      "motor",
+      result.ok ? "info" : "erro",
+      result.ok ? "Vértices calculados." : result.erro.mensagem,
+      result.ok
+        ? { vertices: result.vertices.length, avisos: result.avisos }
+        : { codigo: result.erro.codigo, avisos: result.avisos },
+    )
 
     // Sem coordenadas, mas com azimutes e distâncias: é um memorial por azimute.
     if (!result.ok && result.erro.codigo === "NENHUM_VERTICE") {
       const texto = pages.map((p) => reconstruirLinhas(p).join("\n")).join("\n")
-      if (lerMemorial(texto).segmentos.length >= 3 && (await canUseFeature(userId, "memorial_azimute"))) {
+      const segmentosLidos = lerMemorial(texto).segmentos.length
+      const permitidoPeloPlano = segmentosLidos >= 3 ? await canUseFeature(userId, "memorial_azimute") : false
+      registrar(
+        diagnostico,
+        "azimute_deteccao",
+        segmentosLidos >= 3 && permitidoPeloPlano ? "info" : "aviso",
+        segmentosLidos < 3
+          ? "Sem coordenadas e menos de 3 segmentos de azimute: não é convertido."
+          : permitidoPeloPlano
+            ? "Sem coordenadas e com azimutes: convertendo para o fluxo por azimute."
+            : "Sem coordenadas e com azimutes, mas o plano do usuário não tem o fluxo por azimute.",
+        { segmentosLidos, minimoSegmentos: 3, permitidoPeloPlano },
+      )
+      if (segmentosLidos >= 3 && permitidoPeloPlano) {
         const { data: convertido } = await db
           .from("projects")
           .update({ memorial_type: "azimute", status: "draft", error_code: null, error_message: null })
@@ -144,6 +183,8 @@ export async function processMemorial(projectId: string, userId: string): Promis
           .maybeSingle()
         if (convertido) {
           const r = await processarAzimute(projectId, userId, { reler: true })
+          registrar(diagnostico, "azimute", r.ok ? "info" : "erro", r.mensagem, r.ok ? { etapa: r.etapa } : { codigo: r.codigo, status: r.status })
+          await gravarDiagnostico(projectId, userId, diagnostico)
           return r.ok
             ? { ok: true, azimute: true, etapa: r.etapa, message: r.mensagem }
             : { ok: false, error: r.codigo, message: r.mensagem, status: r.status }
@@ -201,6 +242,8 @@ export async function processMemorial(projectId: string, userId: string): Promis
       throw new MemorialProcessingError("USAGE_UPDATE_FAILED", "Não foi possível registrar o uso do memorial.", 500)
     }
 
+    registrar(diagnostico, "concluido", "info", "Memorial processado com sucesso.", { vertices: result.vertices.length })
+    await gravarDiagnostico(projectId, userId, diagnostico)
     return { ok: true, result }
   } catch (error) {
     const code = error instanceof MemorialProcessingError
@@ -219,6 +262,18 @@ export async function processMemorial(projectId: string, userId: string): Promis
       .eq("id", projectId)
       .eq("user_id", userId)
       .eq("updated_at", terminalUpdatedAt)
+
+    const pilha = resumirPilha(error)
+    registrar(diagnostico, "erro", "erro", message, {
+      codigo: code,
+      status,
+      tipo: error instanceof Error ? error.name : typeof error,
+      pilha,
+    })
+    // Log do servidor (Vercel): uma linha JSON por falha, com o mesmo conteúdo do diagnóstico.
+    console.error("[memorial] falha no processamento", JSON.stringify({ projectId, codigo: code, status, mensagem: message, pilha }))
+    // Separado do update de status: se a coluna diagnostico faltar, o erro ainda fica registrado.
+    await gravarDiagnostico(projectId, userId, diagnostico)
 
     return { ok: false, error: code, message, status }
   }

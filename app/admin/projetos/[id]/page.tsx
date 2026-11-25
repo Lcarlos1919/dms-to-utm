@@ -20,14 +20,22 @@ export default async function AdminProjectDetail({ params }: { params: Promise<{
   }
 
   const { id } = await params
-  const { data: project, error } = await createAdminClient()
+  const admin = createAdminClient()
+  const { data: projectBase, error } = await admin
     .from("projects")
-    .select("id,user_id,name,status,original_filename,source_pdf_path,area_m2,perimeter_m,utm_zone,datum,error_code,error_message,created_at,updated_at")
+    .select("id,user_id,name,status,memorial_type,original_filename,source_pdf_path,area_m2,perimeter_m,utm_zone,datum,error_code,error_message,created_at,updated_at")
     .eq("id", id)
     .maybeSingle()
 
   if (error) throw new Error("Falha ao carregar projeto.")
-  if (!project) notFound()
+  if (!projectBase) notFound()
+  // Lido à parte: se a migração 009 ainda não foi rodada, a página continua funcionando sem o diagnóstico.
+  const { data: diagnosticoRow, error: diagnosticoError } = await admin
+    .from("projects")
+    .select("diagnostico")
+    .eq("id", id)
+    .maybeSingle()
+  const project = { ...projectBase, diagnostico: diagnosticoError ? null : (diagnosticoRow?.diagnostico ?? null) }
 
   const users = await resolveAdminUserDirectory([project.user_id])
   const user = users.get(project.user_id)
@@ -59,6 +67,36 @@ export default async function AdminProjectDetail({ params }: { params: Promise<{
           <h2 className="font-medium text-red-200">Erro de processamento</h2>
           {project.error_code && <p className="mt-2 font-mono text-xs text-red-300">{project.error_code}</p>}
           {project.error_message && <p className="mt-1 text-sm text-red-200/80">{project.error_message}</p>}
+        </section>
+      ) : null}
+
+      {project.diagnostico || project.error_code ? (
+        <section className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4" aria-label="Diagnóstico técnico">
+          <h2 className="font-medium text-zinc-200">Diagnóstico técnico</h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            Eventos do processamento, na ordem em que aconteceram. Copie o JSON para investigar a falha.
+          </p>
+          {project.diagnostico ? null : (
+            <p className="mt-2 text-sm text-amber-300">
+              Este projeto foi processado antes do diagnóstico existir (ou a migração 009 ainda não foi rodada).
+            </p>
+          )}
+          <details className="mt-3" open>
+            <summary className="cursor-pointer text-sm text-zinc-300">JSON completo</summary>
+            <pre className="mt-2 max-h-[560px] overflow-auto whitespace-pre-wrap break-all rounded-lg bg-black/40 p-3 font-mono text-[11px] leading-relaxed text-zinc-300">
+              {JSON.stringify(
+                {
+                  projectId: project.id,
+                  status: project.status,
+                  memorialType: project.memorial_type,
+                  erro: project.error_code ? { codigo: project.error_code, mensagem: project.error_message } : null,
+                  diagnostico: project.diagnostico ?? null,
+                },
+                null,
+                2,
+              )}
+            </pre>
+          </details>
         </section>
       ) : null}
 
