@@ -38,7 +38,9 @@ export function lerMemorial(textoBruto: string): MemorialLido {
   const out: MemorialLido = { segmentos: [], avisos };
 
   // Cabeçalho
-  const imv = /Im[óo]vel:\s*(.+?)(?=\s+Propriet|\s+Munic[íi]pio|$)/i.exec(t);
+  // Cabeçalho = até "LIMITES E CONFRONTAÇÕES": depois disso aparecem as glebas dos vizinhos (ex.: "Gleba 11").
+  const cab = t.slice(0, /LIMITES\s+E\s+CONFRONTA/i.exec(t)?.index ?? t.length);
+  const imv = /Im[óo]vel:\s*(.+?)(?=\s+Propriet|\s+Munic[íi]pio|$)/i.exec(cab);
   if (imv) {
     out.imovel = imv[1].trim();
     // "LOTE: 07" e "GLEBA: 05" (formato impresso) e "LOTE 07" / "GLEBA 05" (formato corrido)
@@ -48,6 +50,17 @@ export function lerMemorial(textoBruto: string): MemorialLido {
     if (g) out.gleba = g[1].toUpperCase();
     const ng = /GLEBA\s+(?!\d)([A-ZÀ-Ú][A-ZÀ-Ú ]+?)\s*$/i.exec(imv[1]);
     if (ng) out.nomeGleba = ng[1].trim();
+  }
+  // Número da gleba no cabeçalho ("GLEBA: 05"), quando o texto do "Imóvel:" não existe.
+  if (out.gleba === undefined) {
+    // "GLEBA: 05" com rótulo, ou o número solto logo depois do PER ("PER: 4.623,040 05") no layout do OCR.
+    const g = /\bGLEBA\s*:\s*(\d{1,3}[A-Za-z]?)\b/i.exec(cab) ?? /\bPER\s*:?\s*[\d.]+,\d+\s+(\d{1,3})\b/i.exec(cab);
+    if (g) out.gleba = g[1].toUpperCase();
+  }
+  // Cabeçalho impresso em que o OCR separa o rótulo do valor: "IMÓVEL: SETOR: Gleba Rio Branco São Miguel GLEBA: LOTE: 07".
+  if (out.nomeGleba === undefined) {
+    const nomeSem = /IM[ÓO]VEL\s*:[\s\S]{0,40}?((?:GLEBA|Gleba)\s+[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ ]{2,60}?)(?=\s+(?:GLEBA|Gleba|LOTE|Lote|[ÁA]REA|OBJETO|SETOR)\b|\s*$)/.exec(cab);
+    if (nomeSem) out.nomeGleba = nomeSem[1].trim();
   }
   const mun = /Munic[íi]pio:\s*(.+?)\s+U\.?F:?\s*([A-Z]{2})/i.exec(t);
   if (mun) { out.municipio = mun[1].trim(); out.uf = mun[2]; }
