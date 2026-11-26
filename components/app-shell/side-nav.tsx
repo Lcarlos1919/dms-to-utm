@@ -13,6 +13,7 @@ import {
   BarChart3,
   ScrollText,
   Settings,
+  MessageCircle,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -33,6 +34,7 @@ const navItems: Record<"dashboard" | "admin", NavItem[]> = {
     { href: "/admin/projetos", label: "Projetos", icon: FolderKanban, permission: "org:projects:read" },
     { href: "/admin/assinaturas", label: "Assinaturas", icon: Receipt, permission: "org:billing:read" },
     { href: "/admin/uso", label: "Uso", icon: BarChart3, permission: "org:usage:read" },
+    { href: "/admin/suporte", label: "Suporte", icon: MessageCircle, permission: "org:users:read" },
     { href: "/admin/logs", label: "Logs", icon: ScrollText, permission: "org:audit:read" },
     { href: "/admin/configuracoes", label: "Configurações", icon: Settings, permission: "org:staff:manage", adminOnly: true },
   ],

@@ -7,6 +7,9 @@ import { requireUser } from "@/lib/auth"
 import { ensureProfile, getMemorialPermissions } from "@/lib/profiles"
 import { isSupabaseAdminConfigured } from "@/lib/supabase/server"
 import { getStaffAccess } from "@/lib/staff"
+import { getUsageStatus } from "@/lib/usage"
+import { PlanoCard } from "@/components/app-shell/plano-card"
+import { SuporteChat } from "@/components/suporte/suporte-chat"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const userId = await requireUser()
@@ -24,8 +27,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
     }
   }
 
+  // Cartão do plano na navbar: mostra o que importa agora (dias do Pro, ou o que falta no Grátis).
+  let planoCard: React.ReactNode = null
+  if (isSupabaseAdminConfigured()) {
+    try {
+      planoCard = <PlanoCard usage={await getUsageStatus(userId)} />
+    } catch {
+      planoCard = null
+    }
+  }
+
   const staff = await getStaffAccess()
-  const sidebarFooter = staff.isStaff ? (
+  const adminCard = staff.isStaff ? (
     <Link
       href="/admin"
       prefetch={false}
@@ -34,6 +47,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span>Painel admin</span>
     </Link>
+  ) : null
+  const sidebarFooter = planoCard || adminCard ? (
+    <div className="space-y-2">
+      {planoCard}
+      {adminCard}
+    </div>
   ) : undefined
 
   return (
@@ -55,6 +74,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       }
     >
       {children}
+      <SuporteChat />
     </AppShell>
   )
 }

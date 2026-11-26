@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     return erroApi(403, "PERMISSAO_NEGADA", "A criação de memoriais está bloqueada para esta conta.")
   }
   if (!usage.canCreate) {
-    return erroApi(403, "COTA_EXCEDIDA", "Você atingiu o limite de memoriais do plano Grátis neste mês.")
+    return erroApi(403, "LIMITE_PLANO", "Você atingiu o limite do plano Grátis. Assine o Pro para continuar.")
   }
 
   const db = createAdminClient()

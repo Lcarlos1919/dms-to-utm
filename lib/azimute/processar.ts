@@ -2,7 +2,7 @@ import "server-only"
 
 import { revalidatePath } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/server"
-import { getUsageStatus, incrementUsage } from "@/lib/usage"
+import { registrarUso, verificarCota } from "@/lib/plano"
 import { verticeParaLinha } from "@/lib/topocad-db/mapeamento"
 import { lonLatParaUtm } from "@/lib/vertix-core/utm"
 import { conferirIdentificacao, relatorioPoligonal, validarSegmentos } from "@/lib/vertix-core/revisao"
@@ -232,11 +232,11 @@ export async function finalizarAzimute(
   const contar = !dados.usoRegistrado && statusAtual !== "ready"
   if (contar) {
     try {
-      const uso = await getUsageStatus(userId)
-      if (!uso.canCreate) {
-        dados.pendencia = "Você atingiu o limite de memoriais do seu plano neste mês."
+      const cota = await verificarCota(userId, "azimute", projectId)
+      if (!cota.ok) {
+        dados.pendencia = cota.mensagem
         await salvarDados(projectId, userId, dados, "revisado")
-        return falha("COTA_EXCEDIDA", dados.pendencia, 403)
+        return falha("LIMITE_PLANO", cota.mensagem, 403)
       }
     } catch {
       return falha("ERRO_PERMISSAO", "Não foi possível verificar o limite do plano.", 500)
@@ -261,7 +261,7 @@ export async function finalizarAzimute(
 
   if (contar) {
     try {
-      await incrementUsage(userId)
+      await registrarUso(projectId, userId, "azimute")
     } catch {
       return falha("USAGE_UPDATE_FAILED", "Não foi possível registrar o uso do memorial.", 500)
     }

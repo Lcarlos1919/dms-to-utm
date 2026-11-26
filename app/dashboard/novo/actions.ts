@@ -1,19 +1,13 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
 import { requireUser } from "@/lib/auth"
-import { getMemorialPermissions } from "@/lib/profiles"
 import { createAdminClient } from "@/lib/supabase/server"
-import { getUsageStatus, incrementUsage } from "@/lib/usage"
+import { getUsageStatus } from "@/lib/usage"
+import { registrarUso, verificarCota } from "@/lib/plano"
 import { processMemorial } from "@/lib/engine"
 import { recalcularGeometria, type Vertice } from "@/lib/topocad"
 import { verticeParaLinha } from "@/lib/topocad-db/mapeamento"
-import {
-  excluirProjetoCompleto,
-  limparProjetoAposFalhaDeCriacao,
-  MEMORIAL_DELETE_BLOCKED_MESSAGE,
-  ProjectDeletionPermissionError,
-} from "@/lib/projects/delete-project"
+import { limparProjetoAposFalhaDeCriacao } from "@/lib/projects/delete-project"
 import { z } from "zod"
 import { sanitizePdfFileName, validatePdfFile } from "@/lib/pdf-validation"
 
@@ -53,7 +47,7 @@ export async function createProject(input: CreateProjectInput): Promise<CreatePr
 
   const usage = await getUsageStatus(userId)
   if (!usage.canCreateMemorials) return { ok: false, error: "A criação de memoriais está bloqueada para esta conta." }
-  if (!usage.canCreate) return { ok: false, error: "Você atingiu o limite do plano Grátis neste mês.", limitReached: true }
+  if (!usage.canCreate) return { ok: false, error: "Você atingiu o limite do plano Grátis.", limitReached: true }
   const supabase = createAdminClient()
   const projectId = crypto.randomUUID()
   const storagePath = `${userId}/${projectId}/arquivo.pdf`
@@ -98,34 +92,6 @@ export async function attachSourcePdf(projectId: string, storagePath: string) {
 
   if (error || !data) return { ok: false as const, error: "Não foi possível anexar o PDF." }
   return { ok: true as const }
-}
-
-export async function excluirProjeto(projectId: string) {
-  const userId = await requireUser()
-  let permissions: Awaited<ReturnType<typeof getMemorialPermissions>>
-  try {
-    permissions = await getMemorialPermissions(userId)
-  } catch {
-    return { ok: false as const, error: "Não foi possível verificar a permissão para excluir o projeto." }
-  }
-
-  if (!permissions.canDeleteMemorials) {
-    return { ok: false as const, error: MEMORIAL_DELETE_BLOCKED_MESSAGE }
-  }
-
-  try {
-    const result = await excluirProjetoCompleto(projectId, userId)
-    if (result.ok) {
-      revalidatePath("/dashboard")
-      revalidatePath("/dashboard/planos")
-    }
-    return result
-  } catch (error) {
-    if (error instanceof ProjectDeletionPermissionError) {
-      return { ok: false as const, error: MEMORIAL_DELETE_BLOCKED_MESSAGE }
-    }
-    return { ok: false as const, error: "Não foi possível excluir o projeto e seus arquivos." }
-  }
 }
 
 export async function retryProject(projectId: string) {
@@ -182,8 +148,8 @@ export async function saveProjectVertices(input: unknown) {
   const shouldCountUsage = vertices.length >= 3 && project.status !== "ready"
 
   if (shouldCountUsage) {
-    const usage = await getUsageStatus(userId)
-    if (!usage.canCreate) return { ok: false as const, error: "Você atingiu o limite de memoriais do plano Grátis neste mês." }
+    const cota = await verificarCota(userId, "comum", parsed.data.projectId)
+    if (!cota.ok) return { ok: false as const, error: cota.mensagem }
   }
 
   const { error: deleteError } = await supabase
@@ -230,7 +196,7 @@ export async function saveProjectVertices(input: unknown) {
 
   if (shouldCountUsage) {
     try {
-      await incrementUsage(userId)
+      await registrarUso(parsed.data.projectId, userId, "comum")
     } catch {
       await supabase
         .from("projects")

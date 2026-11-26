@@ -2,8 +2,12 @@ import "server-only"
 
 import { createAdminClient } from "@/lib/supabase/server"
 import { getMemorialPermissions } from "@/lib/profiles"
+import { situacaoDoPlano, type SituacaoPlano } from "@/lib/plano"
+import { TOTAL_GRATIS } from "@/lib/vertix-core/plano"
 
-export const DEFAULT_FREE_LIMIT = 3
+/** Total de memoriais do plano Grátis (sem bônus). */
+export const DEFAULT_FREE_LIMIT = TOTAL_GRATIS
+
 const USAGE_UPDATE_ATTEMPTS = 8
 
 export function currentMonth(date = new Date()) {
@@ -11,18 +15,21 @@ export function currentMonth(date = new Date()) {
   return `${date.getUTCFullYear()}-${month}-01`
 }
 
-export type UsageStatus = {
+/** Situação do plano + se a conta pode criar memoriais (permissão do admin). */
+export type UsageStatus = SituacaoPlano & {
   plan: "free" | "pro"
-  used: number
-  limit: number | null
-  bonusCredits: number
   canCreate: boolean
   canCreateMemorials: boolean
-  canDeleteMemorials: boolean
 }
 
-type UsageStatusOptions = {
-  excludeProcessingProjectId?: string
+export async function getUsageStatus(userId: string): Promise<UsageStatus> {
+  const [situacao, permissions] = await Promise.all([situacaoDoPlano(userId), getMemorialPermissions(userId)])
+  return {
+    ...situacao,
+    plan: situacao.plano === "pro" ? "pro" : "free",
+    canCreateMemorials: permissions.canCreateMemorials,
+    canCreate: permissions.canCreateMemorials && situacao.podeCriar,
+  }
 }
 
 export async function getFreeMonthlyLimit() {
@@ -55,60 +62,7 @@ export async function getMonthlyUsageTotal(month = currentMonth()) {
   }
 }
 
-export async function getUsageStatus(userId: string, options: UsageStatusOptions = {}): Promise<UsageStatus> {
-  const supabase = createAdminClient()
-  const monthStart = new Date(`${currentMonth()}T00:00:00.000Z`).toISOString()
-  let processingQuery = supabase
-    .from("projects")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .eq("status", "processing")
-    .gte("updated_at", monthStart)
-
-  if (options.excludeProcessingProjectId) {
-    processingQuery = processingQuery.neq("id", options.excludeProcessingProjectId)
-  }
-
-  const [
-    { data: profile, error: profileError },
-    { data: usage, error: usageError },
-    { count: processingCount, error: processingError },
-    freeLimit,
-    permissions,
-  ] = await Promise.all([
-    supabase.from("profiles").select("plan,bonus_credits").eq("user_id", userId).maybeSingle(),
-    supabase.from("usage").select("memorials_used").eq("user_id", userId).eq("month", currentMonth()).maybeSingle(),
-    processingQuery,
-    getFreeMonthlyLimit(),
-    getMemorialPermissions(userId),
-  ])
-
-  if (profileError || usageError || processingError) throw new Error("Não foi possível consultar o uso do plano.")
-
-  const plan = profile?.plan === "pro" ? "pro" : "free"
-  const bonusCredits = Number(profile?.bonus_credits ?? 0)
-  const used = Number(usage?.memorials_used ?? 0)
-  const reserved = processingCount ?? 0
-  const permissionState = {
-    canCreateMemorials: permissions.canCreateMemorials,
-    canDeleteMemorials: permissions.canDeleteMemorials,
-  }
-
-  if (plan === "pro") {
-    return { plan, used, limit: null, bonusCredits, canCreate: permissions.canCreateMemorials, ...permissionState }
-  }
-
-  const limit = freeLimit + bonusCredits
-  return {
-    plan,
-    used,
-    limit,
-    bonusCredits,
-    canCreate: permissions.canCreateMemorials && used + reserved < limit,
-    ...permissionState,
-  }
-}
-
+/** Contagem mensal (tabela usage), usada pela área admin. */
 export async function incrementUsage(userId: string) {
   const supabase = createAdminClient()
   const month = currentMonth()

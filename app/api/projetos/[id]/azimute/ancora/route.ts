@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { erroApi, identidadeApi } from "@/lib/api/projetos"
-import { canUseFeature } from "@/lib/features"
+import { verificarCota } from "@/lib/plano"
 import { createAdminClient } from "@/lib/supabase/server"
 import { localizarNaBase } from "@/lib/azimute/base"
 import { carregarProjetoAzimute, finalizarAzimute } from "@/lib/azimute/processar"
@@ -35,9 +35,8 @@ async function carregar(params: Promise<{ id: string }>): Promise<Ctx> {
   }
   if (!projeto) return { ok: false, response: erroApi(404, "NAO_ENCONTRADO", "Projeto não encontrado.") }
   if (projeto.memorial_type !== "azimute") return { ok: false, response: erroApi(400, "TIPO_INCOMPATIVEL", "Este projeto não é do tipo azimute.") }
-  if (!(await canUseFeature(userId, "memorial_azimute"))) {
-    return { ok: false, response: erroApi(403, "FEATURE_BLOQUEADA", "O memorial por azimute não está habilitado para este plano.") }
-  }
+  const cota = await verificarCota(userId, "azimute", id.data)
+  if (!cota.ok) return { ok: false, response: erroApi(403, "LIMITE_PLANO", cota.mensagem) }
   const dados = azimuteDadosSchema.safeParse(projeto.azimute_dados)
   if (!dados.success) return { ok: false, response: erroApi(409, "SEM_TABELA", "Leia os documentos antes de definir o ponto de partida.") }
   if (validarSegmentos(dados.data.segmentos).length) {

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import { requireUser } from "@/lib/auth"
 import { isSupabaseConfigured } from "@/lib/supabase/config"
 import { getUsageStatus } from "@/lib/usage"
-import { canUseFeature } from "@/lib/features"
+import { verificarCota } from "@/lib/plano"
 import { UploadDropzone } from "@/components/dashboard/upload-dropzone"
 import { SetupNotice } from "@/components/setup-notice"
 
@@ -22,10 +22,11 @@ export default async function NovoProjetoPage() {
     )
   }
 
-  const [usage, canUseAzimute] = await Promise.all([
+  const [usage, cotaAzimute] = await Promise.all([
     getUsageStatus(userId),
-    canUseFeature(userId, "memorial_azimute"),
+    verificarCota(userId, "azimute"),
   ])
+  const canUseAzimute = cotaAzimute.ok
   if (!usage.canCreateMemorials) {
     return (
       <div className="max-w-2xl rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6">
@@ -45,9 +46,9 @@ export default async function NovoProjetoPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-semibold text-zinc-100">Novo projeto</h1>
-        {usage.limit !== null && (
+        {usage.plano === "gratis" && (
           <p className="text-sm text-zinc-500">
-            Você usou {usage.used} de {usage.limit} memoriais este mês.
+            Plano Grátis: {usage.totalUsado} de {usage.totalLimite} memoriais usados.
           </p>
         )}
       </div>
