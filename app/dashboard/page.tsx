@@ -85,7 +85,7 @@ export default async function DashboardPage() {
           Não foi possível carregar os projetos: {error.message}
         </p>
       ) : (
-        <ProjectsTable projects={projects} canDeleteMemorials={usage.canDeleteMemorials} />
+        <ProjectsTable projects={projects} />
       )}
     </div>
   )

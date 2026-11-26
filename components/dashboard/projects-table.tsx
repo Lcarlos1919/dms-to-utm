@@ -1,15 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useTransition, type MouseEvent } from "react"
-import { FolderOpen, Trash2 } from "lucide-react"
-import { excluirProjeto } from "@/app/dashboard/novo/actions"
+import { useMemo, useState } from "react"
+import { FolderOpen, Search } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard/dashboard-card"
 import { Badge } from "@/components/ui/badge"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatArea, formatDate, statusLabels, type ProjectStatus } from "@/lib/format"
-import { cn } from "@/lib/utils"
 
 export type ProjectRow = {
   id: string
@@ -33,54 +29,17 @@ function rotuloStatus(project: ProjectRow): string {
 
 const projectGrid = "sm:grid-cols-[minmax(0,2fr)_minmax(110px,1fr)_minmax(110px,1fr)_minmax(130px,1fr)]"
 
-function DeleteProjectButton({ projectId, projectName, canDeleteMemorials }: { projectId: string; projectName: string; canDeleteMemorials: boolean }) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-  const disabledReason = "Excluir disponível no plano Pro"
+/** Busca sem acento e sem diferença de maiúsculas, pelo nome e pelo status. */
+const normalizar = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim()
 
-  function handleDelete(event: MouseEvent<HTMLButtonElement>) {
-    event.preventDefault()
-    event.stopPropagation()
-    if (!canDeleteMemorials || isPending) return
-    if (!window.confirm(`Excluir o projeto “${projectName}” e seus arquivos definitivamente? Essa ação não pode ser desfeita.`)) return
-    startTransition(async () => {
-      const result = await excluirProjeto(projectId)
-      if (!result.ok) window.alert(result.error)
-      else router.refresh()
-    })
-  }
+export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
+  const [busca, setBusca] = useState("")
+  const filtrados = useMemo(() => {
+    const termo = normalizar(busca)
+    if (!termo) return projects
+    return projects.filter((p) => normalizar(`${p.name} ${rotuloStatus(p)}`).includes(termo))
+  }, [projects, busca])
 
-  const deleteButton = (
-    <button
-      type="button"
-      onClick={handleDelete}
-      disabled={isPending}
-      aria-disabled={!canDeleteMemorials || isPending}
-      aria-label={`Excluir memorial ${projectName}`}
-      className={cn(
-        "pointer-events-auto relative z-20 rounded-lg p-2 text-zinc-500 transition-colors",
-        canDeleteMemorials
-          ? "hover:bg-red-950/40 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
-          : "cursor-not-allowed opacity-50",
-      )}
-    >
-      <Trash2 className="h-4 w-4" aria-hidden="true" />
-    </button>
-  )
-
-  if (!canDeleteMemorials) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{deleteButton}</TooltipTrigger>
-        <TooltipContent side="top">{disabledReason}</TooltipContent>
-      </Tooltip>
-    )
-  }
-
-  return deleteButton
-}
-
-export function ProjectsTable({ projects, canDeleteMemorials = false }: { projects: ProjectRow[]; canDeleteMemorials?: boolean }) {
   if (projects.length === 0) {
     return (
       <DashboardCard>
@@ -95,53 +54,64 @@ export function ProjectsTable({ projects, canDeleteMemorials = false }: { projec
 
   return (
     <div className="space-y-3">
-      <div className={`hidden grid-cols-4 gap-4 px-5 text-xs font-medium text-zinc-500 ${projectGrid} sm:grid`} aria-hidden="true">
-        <span>Nome</span>
-        <span>Status</span>
-        <span>Área</span>
-        <span>Criado em</span>
-      </div>
-      {projects.map((project) => (
-        <div key={project.id}>
-          <DashboardCard>
-            <div className="group relative">
-              <Link
-                href={`/dashboard/projeto/${project.id}`}
-                aria-label={`Abrir projeto ${project.name}`}
-                className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-400"
-              />
-              <div className={`pointer-events-none relative z-10 grid grid-cols-2 gap-x-4 gap-y-3 p-4 sm:grid-cols-4 sm:items-center sm:gap-4 ${projectGrid}`}>
-                <div className="col-span-2 min-w-0 sm:col-span-1">
-                  <span className="mb-1 block text-xs text-zinc-500 sm:hidden">Nome</span>
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="truncate font-medium text-zinc-100 transition-colors group-hover:underline">
-                      {project.name}
-                    </span>
-                    {project.memorial_type === "azimute" && <Badge variant="outline" className="shrink-0">Azimute</Badge>}
-                    <DeleteProjectButton
-                      projectId={project.id}
-                      projectName={project.name}
-                      canDeleteMemorials={canDeleteMemorials}
-                    />
+      <label className="relative block">
+        <span className="sr-only">Pesquisar memoriais</span>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" aria-hidden="true" />
+        <input
+          type="search"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Pesquisar memoriais pelo nome ou status"
+          className="w-full rounded-xl border border-zinc-800 bg-zinc-900/60 py-2.5 pl-9 pr-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-700"
+        />
+      </label>
+
+      {filtrados.length === 0 ? (
+        <p className="px-1 py-6 text-center text-sm text-zinc-500">Nenhum memorial encontrado para “{busca}”.</p>
+      ) : (
+        <>
+          <div className={`hidden grid-cols-4 gap-4 px-5 text-xs font-medium text-zinc-500 ${projectGrid} sm:grid`} aria-hidden="true">
+            <span>Nome</span>
+            <span>Status</span>
+            <span>Área</span>
+            <span>Criado em</span>
+          </div>
+          {filtrados.map((project) => (
+            <div key={project.id}>
+              <DashboardCard>
+                <div className="group relative">
+                  <Link
+                    href={`/dashboard/projeto/${project.id}`}
+                    aria-label={`Abrir projeto ${project.name}`}
+                    className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-400"
+                  />
+                  <div className={`pointer-events-none relative z-10 grid grid-cols-2 gap-x-4 gap-y-3 p-4 sm:grid-cols-4 sm:items-center sm:gap-4 ${projectGrid}`}>
+                    <div className="col-span-2 min-w-0 sm:col-span-1">
+                      <span className="mb-1 block text-xs text-zinc-500 sm:hidden">Nome</span>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="truncate font-medium text-zinc-100 transition-colors group-hover:underline">{project.name}</span>
+                        {project.memorial_type === "azimute" && <Badge variant="outline" className="shrink-0">Azimute</Badge>}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="mb-1 block text-xs text-zinc-500 sm:hidden">Status</span>
+                      <p className="text-sm text-zinc-400">{rotuloStatus(project)}</p>
+                    </div>
+                    <div>
+                      <span className="mb-1 block text-xs text-zinc-500 sm:hidden">Área</span>
+                      <p className="text-sm text-zinc-400">{formatArea(project.area_m2)}</p>
+                    </div>
+                    <div>
+                      <span className="mb-1 block text-xs text-zinc-500 sm:hidden">Criado em</span>
+                      <p className="text-sm text-zinc-400">{formatDate(project.created_at)}</p>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <span className="mb-1 block text-xs text-zinc-500 sm:hidden">Status</span>
-                  <p className="text-sm text-zinc-400">{rotuloStatus(project)}</p>
-                </div>
-                <div>
-                  <span className="mb-1 block text-xs text-zinc-500 sm:hidden">Área</span>
-                  <p className="text-sm text-zinc-400">{formatArea(project.area_m2)}</p>
-                </div>
-                <div>
-                  <span className="mb-1 block text-xs text-zinc-500 sm:hidden">Criado em</span>
-                  <p className="text-sm text-zinc-400">{formatDate(project.created_at)}</p>
-                </div>
-              </div>
+              </DashboardCard>
             </div>
-          </DashboardCard>
-        </div>
-      ))}
+          ))}
+        </>
+      )}
     </div>
   )
 }

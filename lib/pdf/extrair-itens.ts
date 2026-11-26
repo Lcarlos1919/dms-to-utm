@@ -10,7 +10,7 @@ export class ErroApp extends Error { constructor(public codigo: string, mensagem
  * Itens de texto por página. Páginas com texto selecionável usam o texto do PDF;
  * páginas digitalizadas passam pelo OCR (Azure), quando configurado.
  */
-export async function extrairItensComOcr(bytes: Uint8Array): Promise<{ paginas: ItemTexto[][]; avisos: string[] }> {
+export async function extrairItensComOcr(bytes: Uint8Array): Promise<{ paginas: ItemTexto[][]; avisos: string[]; paginasOcr: number[] }> {
   if (bytes.byteLength > MAX_PDF_SIZE) throw new ErroApp("PDF_MUITO_GRANDE", "O PDF deve ter no máximo 50 MB.")
   let leitura: Awaited<ReturnType<typeof lerPaginasComOcr>>
   try {
@@ -24,7 +24,7 @@ export async function extrairItensComOcr(bytes: Uint8Array): Promise<{ paginas: 
     const motivo = leitura.avisos.join(" ")
     throw new ErroApp("PDF_SEM_TEXTO", motivo ? `O PDF não contém texto selecionável. ${motivo}` : "O PDF não contém texto selecionável.")
   }
-  return { paginas: leitura.itens, avisos: leitura.avisos }
+  return { paginas: leitura.itens, avisos: leitura.avisos, paginasOcr: leitura.paginasOcr }
 }
 
 export async function extrairItensDoPdf(bytes: Uint8Array): Promise<ItemTexto[][]> {

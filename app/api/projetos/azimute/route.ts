@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { erroApi, identidadeApi } from "@/lib/api/projetos"
-import { canUseFeature } from "@/lib/features"
+import { verificarCota } from "@/lib/plano"
 import { MAX_PDF_SIZE, sanitizePdfFileName, validatePdfBlob } from "@/lib/pdf-validation"
 import { limparProjetoAposFalhaDeCriacao } from "@/lib/projects/delete-project"
 import { createAdminClient } from "@/lib/supabase/server"
@@ -46,12 +46,8 @@ async function checkAzimuteAccess(userId: string) {
   if (!usage.canCreateMemorials) {
     return erroApi(403, "PERMISSAO_NEGADA", "A criação de memoriais está bloqueada para esta conta.")
   }
-  if (!usage.canCreate) {
-    return erroApi(403, "COTA_EXCEDIDA", "Você atingiu o limite de memoriais do seu plano neste mês.")
-  }
-  if (!(await canUseFeature(userId, "memorial_azimute"))) {
-    return erroApi(403, "FEATURE_BLOQUEADA", "O envio por azimute não está habilitado para este plano.")
-  }
+  const cota = await verificarCota(userId, "azimute")
+  if (!cota.ok) return erroApi(403, "LIMITE_PLANO", cota.mensagem)
 
   return null
 }

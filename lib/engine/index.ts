@@ -2,10 +2,11 @@ import "server-only"
 
 import { isStaleProcessing } from "@/lib/project-status"
 import { createAdminClient } from "@/lib/supabase/server"
-import { getUsageStatus, incrementUsage } from "@/lib/usage"
+import { registrarUso, verificarCota } from "@/lib/plano"
+import { type CategoriaMemorial } from "@/lib/vertix-core/plano"
+import { mensagemParaUsuario } from "@/lib/vertix-core/mensagens"
 import { ErroApp, extrairItensComOcr } from "@/lib/pdf/extrair-itens"
 import { processarPaginas, reconstruirLinhas, type ResultadoMotor } from "@/lib/topocad"
-import { canUseFeature } from "@/lib/features"
 import { processarAzimute, type EtapaAzimute } from "@/lib/azimute/processar"
 import { lerMemorial } from "@/lib/vertix-core/memorial"
 import { projetoDoResultado, verticeParaLinha } from "@/lib/topocad-db/mapeamento"
@@ -58,8 +59,9 @@ export async function processMemorial(projectId: string, userId: string): Promis
 
   // Memorial por azimute tem pipeline próprio (leitura, validação e posicionamento).
   if (project.memorial_type === "azimute") {
-    if (!(await canUseFeature(userId, "memorial_azimute"))) {
-      return { ok: false, error: "FEATURE_BLOQUEADA", message: "O memorial por azimute não está habilitado para este plano.", status: 403 }
+    const cotaAzimute = await verificarCota(userId, "azimute", projectId)
+    if (!cotaAzimute.ok) {
+      return { ok: false, error: "LIMITE_PLANO", message: cotaAzimute.mensagem, status: 403 }
     }
     const r = await processarAzimute(projectId, userId, { reler: true })
     return r.ok
@@ -86,16 +88,10 @@ export async function processMemorial(projectId: string, userId: string): Promis
     }
   }
 
-  const usage = await getUsageStatus(userId, {
-    excludeProcessingProjectId: project.status === "processing" && isStale ? projectId : undefined,
-  })
-  if (!usage.canCreate) {
-    return {
-      ok: false,
-      error: "COTA_EXCEDIDA",
-      message: "Você atingiu o limite de memoriais do plano Grátis neste mês.",
-      status: 403,
-    }
+  // Pré-checagem: se o total do Grátis já acabou, nem começa. A categoria é conferida depois da leitura.
+  const cotaGeral = await verificarCota(userId, "comum", projectId)
+  if (!cotaGeral.ok) {
+    return { ok: false, error: "LIMITE_PLANO", message: cotaGeral.mensagem, status: 403 }
   }
 
   const { data: claimedProject, error: processingError } = await db
@@ -138,7 +134,9 @@ export async function processMemorial(projectId: string, userId: string): Promis
     }
     registrar(diagnostico, "download", "info", "PDF baixado.", { bytes: file.size })
 
-    const { paginas: pages, avisos: avisosOcr } = await extrairItensComOcr(new Uint8Array(await file.arrayBuffer()))
+    const { paginas: pages, avisos: avisosOcr, paginasOcr } = await extrairItensComOcr(new Uint8Array(await file.arrayBuffer()))
+    // Categoria da cota: com OCR (digitalizado) ou comum. Memorial por azimute é contado à parte.
+    const categoria: CategoriaMemorial = paginasOcr.length > 0 ? "ocr" : "comum"
     registrar(diagnostico, "ocr", "info", "Texto extraído (nativo e OCR).", {
       paginas: pages.length,
       paginasComTexto: pages.filter((p) => p.length > 0).length,
@@ -167,7 +165,8 @@ export async function processMemorial(projectId: string, userId: string): Promis
       const texto = pages.map((p) => reconstruirLinhas(p).join("\n")).join("\n")
       const leituraAzimute = lerMemorial(texto)
       const segmentosLidos = leituraAzimute.segmentos.length
-      const permitidoPeloPlano = segmentosLidos >= 3 ? await canUseFeature(userId, "memorial_azimute") : false
+      const cotaAzimuteDeteccao = segmentosLidos >= 3 ? await verificarCota(userId, "azimute", projectId) : null
+      const permitidoPeloPlano = cotaAzimuteDeteccao?.ok === true
       registrar(
         diagnostico,
         "azimute_deteccao",
@@ -176,7 +175,7 @@ export async function processMemorial(projectId: string, userId: string): Promis
           ? "Sem coordenadas e menos de 3 segmentos de azimute: não é convertido."
           : permitidoPeloPlano
             ? "Sem coordenadas e com azimutes: convertendo para o fluxo por azimute."
-            : "Sem coordenadas e com azimutes, mas o plano do usuário não tem o fluxo por azimute.",
+            : "Sem coordenadas e com azimutes, mas o plano não permite mais memoriais por azimute.",
         { segmentosLidos, minimoSegmentos: 3, permitidoPeloPlano, conferencia: leituraAzimute.conferencia ?? null },
       )
       if (segmentosLidos >= 3 && permitidoPeloPlano) {
@@ -201,6 +200,11 @@ export async function processMemorial(projectId: string, userId: string): Promis
 
     if (!result.ok) {
       throw new MemorialProcessingError(result.erro.codigo, result.erro.mensagem)
+    }
+
+    const cotaCategoria = await verificarCota(userId, categoria, projectId)
+    if (!cotaCategoria.ok) {
+      throw new MemorialProcessingError("LIMITE_PLANO", cotaCategoria.mensagem, 403)
     }
 
     const vertexRows = result.vertices.map((vertex) => verticeParaLinha(projectId, vertex))
@@ -244,7 +248,7 @@ export async function processMemorial(projectId: string, userId: string): Promis
 
     terminalUpdatedAt = completedProject.updated_at
     try {
-      await incrementUsage(userId)
+      await registrarUso(projectId, userId, categoria)
     } catch {
       throw new MemorialProcessingError("USAGE_UPDATE_FAILED", "Não foi possível registrar o uso do memorial.", 500)
     }
@@ -258,9 +262,11 @@ export async function processMemorial(projectId: string, userId: string): Promis
       : error instanceof ErroApp
         ? error.codigo
         : "PROCESSAMENTO_FALHOU"
-    const message = error instanceof MemorialProcessingError || error instanceof ErroApp
+    // Para o usuário: mensagem limpa, derivada do código. O texto técnico vai só para o diagnóstico (admin).
+    const mensagemTecnica = error instanceof Error ? error.message : String(error)
+    const message = code === "LIMITE_PLANO" && error instanceof MemorialProcessingError
       ? error.message
-      : "Não foi possível processar o memorial. Confira o PDF e tente novamente."
+      : mensagemParaUsuario(code)
     const status = error instanceof MemorialProcessingError ? error.status : error instanceof ErroApp ? 422 : 500
 
     await db
@@ -271,7 +277,7 @@ export async function processMemorial(projectId: string, userId: string): Promis
       .eq("updated_at", terminalUpdatedAt)
 
     const pilha = resumirPilha(error)
-    registrar(diagnostico, "erro", "erro", message, {
+    registrar(diagnostico, "erro", "erro", mensagemTecnica, {
       codigo: code,
       status,
       tipo: error instanceof Error ? error.name : typeof error,

@@ -1,12 +1,5 @@
-import { revalidatePath } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/server"
 import { erroApi, identidadeApi } from "@/lib/api/projetos"
-import { getMemorialPermissions } from "@/lib/profiles"
-import {
-  excluirProjetoCompleto,
-  MEMORIAL_DELETE_BLOCKED_MESSAGE,
-  ProjectDeletionPermissionError,
-} from "@/lib/projects/delete-project"
 import { linhaParaVertice } from "@/lib/topocad-db/mapeamento"
 
 export const runtime = "nodejs"
@@ -34,35 +27,4 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   if (error) return erroApi(500, "ERRO_BANCO", "Não foi possível carregar os vértices.")
   return Response.json({ projeto, vertices: (rows ?? []).map(linhaParaVertice) })
-}
-
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const userId = await identidadeApi()
-  if (!userId) return erroApi(401, "NAO_AUTORIZADO", "Entre na sua conta.")
-
-  const { id } = await params
-  let permissions: Awaited<ReturnType<typeof getMemorialPermissions>>
-  try {
-    permissions = await getMemorialPermissions(userId)
-  } catch {
-    return erroApi(500, "ERRO_BANCO", "Não foi possível verificar as permissões da conta.")
-  }
-
-  if (!permissions.canDeleteMemorials) {
-    return erroApi(403, "PERMISSAO_NEGADA", MEMORIAL_DELETE_BLOCKED_MESSAGE)
-  }
-
-  try {
-    const result = await excluirProjetoCompleto(id, userId)
-    if (!result.ok) return erroApi(404, "NAO_ENCONTRADO", "Projeto não encontrado.")
-  } catch (error) {
-    if (error instanceof ProjectDeletionPermissionError) {
-      return erroApi(403, "PERMISSAO_NEGADA", MEMORIAL_DELETE_BLOCKED_MESSAGE)
-    }
-    return erroApi(500, "ERRO_EXCLUSAO", "Não foi possível excluir o projeto e seus arquivos.")
-  }
-
-  revalidatePath("/dashboard")
-  revalidatePath("/dashboard/planos")
-  return new Response(null, { status: 204 })
 }
